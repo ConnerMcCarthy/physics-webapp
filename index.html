@@ -1,0 +1,366 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Interactive Physics</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Exo+2:wght@200;300;400;600;700&family=DM+Sans:wght@300;400;500&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #030711;
+  --surface: rgba(255,255,255,0.03);
+  --border: rgba(255,255,255,0.07);
+  --purple: rgba(178,139,255,1);
+  --purple-dim: rgba(178,139,255,0.35);
+  --blue: rgba(93,170,255,1);
+  --blue-dim: rgba(93,170,255,0.28);
+  --text: rgba(255,255,255,0.88);
+  --text-muted: rgba(255,255,255,0.48);
+  --text-faint: rgba(255,255,255,0.22);
+}
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html, body {
+  min-height: 100%;
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'DM Sans', sans-serif;
+}
+
+/* ── Background ── */
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background:
+    radial-gradient(ellipse 80% 50% at 20% 10%, rgba(93,170,255,0.055) 0%, transparent 60%),
+    radial-gradient(ellipse 60% 40% at 80% 80%, rgba(178,139,255,0.06) 0%, transparent 55%);
+  pointer-events: none;
+  z-index: 0;
+}
+
+canvas#stars {
+  position: fixed;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 0;
+  pointer-events: none;
+}
+
+/* ── Layout ── */
+.page {
+  position: relative;
+  z-index: 1;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 80px 32px 100px;
+}
+
+/* ── Header ── */
+.site-label {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  letter-spacing: 0.32em;
+  text-transform: uppercase;
+  color: var(--blue);
+  opacity: 0.75;
+  margin-bottom: 16px;
+  text-align: center;
+}
+.site-title {
+  font-family: 'Exo 2', sans-serif;
+  font-weight: 700;
+  font-size: clamp(38px, 6vw, 72px);
+  letter-spacing: -0.03em;
+  line-height: 1;
+  text-align: center;
+  background: linear-gradient(135deg, #fff 30%, rgba(178,139,255,0.9) 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  margin-bottom: 18px;
+}
+.site-sub {
+  font-family: 'DM Sans', sans-serif;
+  font-weight: 300;
+  font-size: clamp(14px, 1.8vw, 18px);
+  color: var(--text-muted);
+  text-align: center;
+  max-width: 480px;
+  line-height: 1.65;
+  margin-bottom: 72px;
+}
+
+/* ── Cards ── */
+.cards {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 20px;
+  width: 100%;
+  max-width: min(1100px, calc(100vw - 64px));
+}
+
+.card {
+  position: relative;
+  border-radius: 18px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  padding: 36px 32px 32px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  transition: border-color 0.25s, transform 0.25s, box-shadow 0.25s;
+  overflow: hidden;
+  min-height: 320px;
+}
+.card::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: 18px;
+  opacity: 0;
+  transition: opacity 0.3s;
+  pointer-events: none;
+}
+.card.active::before {
+  background: radial-gradient(ellipse 80% 60% at 50% 0%, rgba(178,139,255,0.09) 0%, transparent 70%);
+}
+.card.active:hover {
+  border-color: rgba(178,139,255,0.28);
+  transform: translateY(-4px);
+  box-shadow: 0 16px 48px rgba(0,0,0,0.5), 0 0 0 1px rgba(178,139,255,0.1);
+}
+.card.active:hover::before { opacity: 1; }
+
+.card.disabled {
+  opacity: 0.42;
+  cursor: default;
+}
+
+/* Top accent line */
+.card-accent {
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 1px;
+  background: linear-gradient(90deg, transparent 5%, rgba(178,139,255,0.5) 50%, transparent 95%);
+  opacity: 0;
+  transition: opacity 0.3s;
+}
+.card.active:hover .card-accent { opacity: 1; }
+
+/* Icon */
+.card-icon {
+  font-size: 32px;
+  line-height: 1;
+  margin-bottom: 4px;
+  filter: drop-shadow(0 0 10px rgba(178,139,255,0.3));
+}
+
+/* Tag */
+.card-tag {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 9px;
+  letter-spacing: 0.24em;
+  text-transform: uppercase;
+  color: var(--purple);
+  opacity: 0.7;
+}
+
+.card-title {
+  font-family: 'Exo 2', sans-serif;
+  font-weight: 600;
+  font-size: clamp(17px, 1.8vw, 22px);
+  letter-spacing: -0.01em;
+  line-height: 1.2;
+  color: #fff;
+}
+
+.card-desc {
+  font-size: 13px;
+  line-height: 1.68;
+  color: var(--text-muted);
+  flex: 1;
+}
+
+/* Footer row */
+.card-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 6px;
+}
+
+.card-badge {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 9px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  padding: 3px 9px;
+  border-radius: 4px;
+}
+.card-badge.live {
+  background: rgba(80,220,120,0.1);
+  border: 1px solid rgba(80,220,120,0.25);
+  color: rgba(80,220,120,0.9);
+}
+.card-badge.soon {
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(255,255,255,0.1);
+  color: var(--text-faint);
+}
+
+.card-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 18px;
+  border-radius: 8px;
+  background: rgba(178,139,255,0.1);
+  border: 1px solid rgba(178,139,255,0.28);
+  color: rgba(222,211,255,0.92);
+  font-family: 'DM Sans', sans-serif;
+  font-size: 13px;
+  font-weight: 500;
+  text-decoration: none;
+  transition: background 0.18s, border-color 0.18s, gap 0.18s;
+}
+.card-link:hover {
+  background: rgba(178,139,255,0.18);
+  border-color: rgba(178,139,255,0.5);
+  gap: 10px;
+}
+.card-link .arrow { transition: transform 0.18s; }
+.card-link:hover .arrow { transform: translateX(3px); }
+
+/* Stretched link — makes entire active card clickable */
+.card.active .card-link::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: 18px;
+}
+
+/* ── Footer ── */
+.site-foot {
+  position: relative;
+  z-index: 1;
+  margin-top: 72px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  letter-spacing: 0.16em;
+  color: var(--text-faint);
+  text-align: center;
+}
+
+@media (max-width: 800px) {
+  .cards { grid-template-columns: 1fr; max-width: 480px; }
+  .page { padding: 60px 24px 80px; }
+}
+@media (min-width: 801px) and (max-width: 1040px) {
+  .cards { grid-template-columns: repeat(2, 1fr); }
+}
+</style>
+</head>
+<body>
+
+<canvas id="stars"></canvas>
+
+<div class="page">
+  <div class="site-label">Interactive Science · connermccarthy.com</div>
+  <h1 class="site-title">Physics</h1>
+  <p class="site-sub">Interactive simulations and explanations of the counterintuitive corners of classical physics.</p>
+
+  <div class="cards">
+
+    <!-- Tennis Racket Theorem -->
+    <div class="card active">
+      <div class="card-accent"></div>
+      <div class="card-icon">⊙</div>
+      <div class="card-tag">Rotational Mechanics</div>
+      <h2 class="card-title">Tennis Racket Theorem</h2>
+      <p class="card-desc">Spin any object around its intermediate axis and it tumbles — always. Euler's equations predict it, Dzhanibekov observed it in orbit. Explore the instability interactively.</p>
+      <div class="card-foot">
+        <span class="card-badge live">Live</span>
+        <a class="card-link" href="/tennis">Explore <span class="arrow">→</span></a>
+      </div>
+    </div>
+
+    <!-- Fluid Dynamics -->
+    <div class="card disabled">
+      <div class="card-accent"></div>
+      <div class="card-icon">🌊</div>
+      <div class="card-tag">Fluid Mechanics</div>
+      <h2 class="card-title">Fluid Dynamics</h2>
+      <p class="card-desc">Navier-Stokes equations, turbulence, and the physics of flow. Interactive simulations of laminar and chaotic fluid behavior.</p>
+      <div class="card-foot">
+        <span class="card-badge soon">Coming soon</span>
+      </div>
+    </div>
+
+    <!-- Placeholder -->
+    <div class="card disabled">
+      <div class="card-accent"></div>
+      <div class="card-icon">✦</div>
+      <div class="card-tag">In Development</div>
+      <h2 class="card-title">More to come</h2>
+      <p class="card-desc">More interactive physics explorations in progress.</p>
+      <div class="card-foot">
+        <span class="card-badge soon">Coming soon</span>
+      </div>
+    </div>
+
+  </div>
+
+  <div class="site-foot">physics.connermccarthy.com</div>
+</div>
+
+<script>
+// Starfield
+(function() {
+  const cv = document.getElementById('stars');
+  const ctx = cv.getContext('2d');
+  let W, H, stars;
+
+  function resize() {
+    W = cv.width  = window.innerWidth;
+    H = cv.height = window.innerHeight;
+  }
+
+  function initStars() {
+    const N = 280;
+    stars = Array.from({length: N}, () => ({
+      x: Math.random() * W,
+      y: Math.random() * H,
+      r: Math.random() * 1.1 + 0.2,
+      o: Math.random() * 0.5 + 0.1,
+      speed: Math.random() * 0.4 + 0.1,
+      phase: Math.random() * Math.PI * 2
+    }));
+  }
+
+  let t = 0;
+  function draw() {
+    ctx.clearRect(0, 0, W, H);
+    t += 0.006;
+    for (const s of stars) {
+      const opacity = s.o * (0.7 + 0.3 * Math.sin(t * s.speed + s.phase));
+      ctx.fillStyle = `rgba(255,255,255,${opacity})`;
+      ctx.beginPath();
+      ctx.arc(s.x, s.y, s.r, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    requestAnimationFrame(draw);
+  }
+
+  resize();
+  initStars();
+  draw();
+  window.addEventListener('resize', () => { resize(); initStars(); });
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,1474 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>The Tennis Racket Theorem</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Exo+2:wght@200;300;400;500;600;700&family=DM+Sans:wght@300;400;500&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #030711;
+  --surface: rgba(255,255,255,0.03);
+  --border: rgba(255,255,255,0.08);
+  --purple: rgba(178,139,255,1);
+  --purple-dim: rgba(178,139,255,0.36);
+  --blue: rgba(93,170,255,1);
+  --blue-dim: rgba(93,170,255,0.30);
+  --green: rgba(80,220,120,1);
+  --text: rgba(255,255,255,0.88);
+  --text-muted: rgba(255,255,255,0.5);
+  --text-faint: rgba(255,255,255,0.28);
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html,body{width:100%;height:100%;background:var(--bg);color:var(--text);font-family:'DM Sans',sans-serif;overflow:hidden}
+
+#mainCanvas{position:fixed;inset:0;display:block;width:100%;height:100%}
+
+/* ── Overlay ── */
+#simOverlay{position:fixed;inset:0;pointer-events:none;padding:28px 32px;z-index:10}
+.sim-label{font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:0.32em;text-transform:uppercase;color:var(--blue);opacity:.8;margin-bottom:5px}
+.sim-title{font-family:'Exo 2',sans-serif;font-weight:700;font-size:clamp(20px,3.8vw,40px);letter-spacing:-0.02em;color:#fff;line-height:1}
+.sim-subtitle{font-family:'DM Sans',sans-serif;font-weight:300;font-size:13px;color:var(--text-muted);margin-top:7px}
+
+/* Info panel top-right */
+#infoPanel{position:fixed;top:28px;right:32px;display:flex;flex-direction:column;align-items:flex-end;gap:6px;pointer-events:none;z-index:10}
+.info-chip{background:rgba(3,7,17,.65);border:1px solid var(--border);border-radius:6px;padding:5px 11px;font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text-muted);backdrop-filter:blur(8px);display:flex;gap:8px}
+.info-chip strong{color:var(--text);font-weight:500}
+
+/* Flip badge */
+#flipBadge{position:fixed;top:50%;left:32px;transform:translateY(-50%);pointer-events:none;z-index:10}
+.flip-label{font-family:'JetBrains Mono',monospace;font-size:9px;letter-spacing:.2em;text-transform:uppercase;color:var(--text-faint);margin-bottom:2px}
+.flip-num{font-family:'Exo 2',sans-serif;font-weight:700;font-size:clamp(36px,6vw,64px);color:var(--purple);line-height:1;opacity:.65}
+.flip-unit{font-family:'DM Sans',sans-serif;font-size:11px;color:var(--text-faint);margin-top:2px}
+
+/* Axis selector */
+#axisSelect{position:fixed;bottom:72px;left:50%;transform:translateX(-50%);display:flex;gap:6px;pointer-events:all;background:rgba(3,7,17,.72);border:1px solid var(--border);border-radius:10px;padding:5px;backdrop-filter:blur(12px);z-index:10}
+.axis-btn{padding:6px 15px;border-radius:7px;border:1px solid transparent;background:transparent;color:var(--text-muted);font-family:'DM Sans',sans-serif;font-size:12px;cursor:pointer;transition:all .18s;white-space:nowrap}
+.axis-btn:hover{background:rgba(255,255,255,.05);color:var(--text)}
+.axis-btn.active[data-axis="frisbee"]{background:rgba(178,139,255,.12);border-color:var(--purple-dim);color:var(--purple)}
+.axis-btn.active[data-axis="drill"]{background:rgba(80,220,120,.1);border-color:rgba(80,220,120,.3);color:var(--green)}
+.axis-btn.active[data-axis="endover"]{background:rgba(93,170,255,.1);border-color:var(--blue-dim);color:var(--blue)}
+
+/* Bottom buttons */
+#simButtons{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);display:flex;gap:8px;pointer-events:all;z-index:10}
+.sim-btn{padding:8px 18px;border-radius:8px;border:1px solid var(--border);background:rgba(3,7,17,.75);color:var(--text);font-family:'DM Sans',sans-serif;font-size:13px;cursor:pointer;backdrop-filter:blur(10px);transition:all .18s}
+.sim-btn:hover{background:rgba(255,255,255,.06);border-color:rgba(255,255,255,.14)}
+.sim-btn.primary{border-color:var(--purple-dim);color:rgba(222,211,255,.92);background:rgba(178,139,255,.08)}
+.sim-btn.primary:hover{background:rgba(178,139,255,.14);border-color:rgba(178,139,255,.5)}
+
+/* ── Shape selector ── */
+#shapeSelect{position:fixed;bottom:120px;left:50%;transform:translateX(-50%);display:flex;gap:6px;pointer-events:all;background:rgba(3,7,17,.72);border:1px solid var(--border);border-radius:10px;padding:5px;backdrop-filter:blur(12px);z-index:10}
+.shape-btn{padding:6px 16px;border-radius:7px;border:1px solid transparent;background:transparent;color:var(--text-muted);font-family:'DM Sans',sans-serif;font-size:12px;cursor:pointer;transition:all .18s;white-space:nowrap}
+.shape-btn:hover{background:rgba(255,255,255,.05);color:var(--text)}
+.shape-btn.active{background:rgba(93,170,255,.12);border-color:var(--blue-dim);color:var(--blue)}
+
+/* ── Explain screen ── */
+#explainScreen{position:fixed;inset:0;background:var(--bg);z-index:100;overflow-y:auto;overscroll-behavior:contain;display:none}
+.exp-inner{max-width:min(1200px,calc(100vw - 64px));margin:0 auto;padding:40px 0 80px}
+.exp-header{display:flex;align-items:flex-start;justify-content:space-between;gap:20px;margin-bottom:52px;flex-wrap:wrap}
+.exp-back{display:flex;align-items:center;gap:8px;padding:8px 16px 8px 12px;border-radius:8px;border:1px solid var(--border);background:transparent;color:var(--text-muted);font-family:'DM Sans',sans-serif;font-size:13px;cursor:pointer;transition:all .18s;white-space:nowrap}
+.exp-back:hover{background:rgba(255,255,255,.05);color:var(--text)}
+.exp-title-group{flex:1}
+.exp-eyebrow{font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:.28em;text-transform:uppercase;color:var(--purple);opacity:.8;margin-bottom:8px}
+.exp-title{font-family:'Exo 2',sans-serif;font-weight:700;font-size:clamp(24px,4vw,50px);letter-spacing:-0.02em;line-height:1.05;color:#fff}
+
+/* Level toggle */
+.ke-controls-bar{display:flex;background:rgba(255,255,255,.04);border:1px solid var(--border);border-radius:10px;padding:4px;gap:2px;align-self:flex-start}
+.ke-level-btn{padding:7px 18px;border-radius:7px;border:none;background:transparent;color:var(--text-muted);font-family:'DM Sans',sans-serif;font-size:13px;font-weight:500;cursor:pointer;transition:all .18s}
+.ke-level-btn.active{background:rgba(178,139,255,.15);color:rgba(222,211,255,.95);box-shadow:0 0 0 1px rgba(178,139,255,.25)}
+
+/* Simple/detail visibility */
+.ke-simple .ke-detail-only{display:none!important}
+.ke-simple .ke-simple-only{display:block}
+:not(.ke-simple) .ke-simple-only{display:none!important}
+:not(.ke-simple) .ke-detail-only{display:block}
+
+/* Steps */
+.steps-list{display:flex;flex-direction:column;gap:2px}
+.ke-step{display:grid;grid-template-columns:320px 1fr;border-radius:16px;overflow:hidden;background:rgba(255,255,255,.018);border:1px solid rgba(255,255,255,.05);position:relative;transition:border-color .3s}
+.ke-step:hover{border-color:rgba(178,139,255,.12)}
+.step-num{position:absolute;top:14px;left:18px;font-family:'Exo 2',sans-serif;font-weight:700;font-size:80px;line-height:1;color:rgba(178,139,255,.055);pointer-events:none;user-select:none}
+.ke-canvas-wrap{position:relative;z-index:1;padding:24px;display:flex;align-items:center;justify-content:center;background:rgba(255,255,255,.012);border-right:1px solid rgba(255,255,255,.04)}
+.ke-canvas-wrap canvas{display:block;max-width:100%;border-radius:6px}
+.ke-step-text{position:relative;z-index:1;padding:32px 38px;display:flex;flex-direction:column;justify-content:center;gap:11px}
+.step-tag{font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:.22em;text-transform:uppercase;color:var(--purple);opacity:.7}
+.step-heading{font-family:'Exo 2',sans-serif;font-weight:600;font-size:clamp(16px,2.2vw,24px);letter-spacing:-0.01em;color:#fff;line-height:1.2}
+.step-body{font-size:14px;line-height:1.72;color:var(--text-muted);max-width:460px}
+.step-body strong{color:var(--text);font-weight:500}
+.step-body em{color:rgba(178,139,255,.9);font-style:normal}
+.step-sep{height:1px;background:linear-gradient(90deg,transparent 4%,rgba(178,139,255,.07) 30%,rgba(93,170,255,.05) 70%,transparent 96%)}
+
+/* Slider */
+.ke-slider{width:100%;accent-color:var(--purple);cursor:pointer;margin-top:4px}
+.slider-row{display:flex;justify-content:space-between;font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--text-faint);margin-bottom:4px}
+
+/* Callout */
+.ke-callout{margin-top:24px;padding:30px 38px;border-radius:16px;background:linear-gradient(135deg,rgba(178,139,255,.06),rgba(93,170,255,.04));border:1px solid rgba(178,139,255,.14);position:relative;overflow:hidden}
+.ke-callout::before{content:'';position:absolute;top:0;left:0;right:0;height:1px;background:linear-gradient(90deg,transparent,rgba(178,139,255,.4),transparent)}
+.callout-h{font-family:'Exo 2',sans-serif;font-weight:600;font-size:17px;color:#fff;margin-bottom:10px}
+.callout-b{font-size:14px;line-height:1.72;color:var(--text-muted)}
+
+/* ── Explorer panel ── */
+#explorerPanel{position:fixed;right:20px;top:50%;transform:translateY(-50%);width:292px;max-height:88vh;overflow-y:auto;background:rgba(3,7,17,.94);border:1px solid rgba(178,139,255,.22);border-radius:14px;z-index:50;backdrop-filter:blur(18px);box-shadow:0 0 50px rgba(178,139,255,.08),0 4px 24px rgba(0,0,0,.6)}
+.exp-ph{display:flex;align-items:center;justify-content:space-between;padding:13px 16px 10px;border-bottom:1px solid rgba(255,255,255,.06)}
+.exp-pt{font-family:'Exo 2',sans-serif;font-weight:600;font-size:12px;letter-spacing:.12em;text-transform:uppercase;color:rgba(178,139,255,.9)}
+.exp-pc{background:transparent;border:none;color:var(--text-faint);font-size:20px;cursor:pointer;padding:0 2px;line-height:1;transition:color .15s}
+.exp-pc:hover{color:var(--text)}
+.exp-presets{display:flex;flex-wrap:wrap;gap:5px;padding:10px 14px 8px;border-bottom:1px solid rgba(255,255,255,.04)}
+.exp-preset{padding:4px 9px;border-radius:6px;border:1px solid rgba(255,255,255,.09);background:rgba(255,255,255,.03);color:var(--text-muted);font-family:'DM Sans',sans-serif;font-size:11px;cursor:pointer;transition:all .15s}
+.exp-preset:hover{background:rgba(178,139,255,.1);border-color:rgba(178,139,255,.28);color:rgba(222,211,255,.9)}
+.exp-preset.ep-active{background:rgba(178,139,255,.15);border-color:rgba(178,139,255,.42);color:rgba(222,211,255,.95)}
+.exp-map-wrap{padding:10px 14px 4px}
+.exp-map-axes{display:flex;gap:6px;align-items:flex-start}
+.exp-map-y{writing-mode:vertical-rl;transform:rotate(180deg);font-family:'JetBrains Mono',monospace;font-size:9px;color:var(--text-faint);white-space:nowrap;padding:4px 0;line-height:1;align-self:center}
+#stabilityMap{display:block;border-radius:6px;width:100%}
+.exp-map-x{display:flex;justify-content:space-between;font-family:'JetBrains Mono',monospace;font-size:9px;color:var(--text-faint);padding:3px 0 0}
+.exp-sliders{padding:10px 14px;border-top:1px solid rgba(255,255,255,.05);display:flex;flex-direction:column;gap:10px}
+.exp-sl-row{display:flex;flex-direction:column;gap:4px}
+.exp-sl-label{display:flex;justify-content:space-between;font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--text-faint)}
+.exp-sl-label strong{color:rgba(178,139,255,.9);font-weight:500}
+input[type=range].exp-slider{width:100%;accent-color:var(--purple);cursor:pointer}
+.exp-stats{padding:10px 14px 14px;border-top:1px solid rgba(255,255,255,.05)}
+.exp-i-row{display:flex;gap:8px;margin-bottom:8px}
+.exp-i-cell{flex:1;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.06);border-radius:7px;padding:6px 8px}
+.exp-i-name{font-family:'JetBrains Mono',monospace;font-size:9px;color:var(--text-faint);margin-bottom:2px}
+.exp-i-val{font-family:'Exo 2',sans-serif;font-weight:600;font-size:15px;color:var(--text)}
+.exp-i-cell.unstable{border-color:rgba(178,139,255,.3);background:rgba(178,139,255,.06)}
+.exp-i-cell.unstable .exp-i-name{color:rgba(178,139,255,.7)}
+.exp-i-cell.unstable .exp-i-val{color:rgba(222,211,255,.95)}
+.inst-row{display:flex;align-items:center;gap:8px}
+.inst-lbl{font-family:'JetBrains Mono',monospace;font-size:9px;color:var(--text-faint);white-space:nowrap}
+.inst-bg{flex:1;height:5px;background:rgba(255,255,255,.07);border-radius:3px;overflow:hidden}
+.inst-fg{height:100%;border-radius:3px;background:linear-gradient(90deg,rgba(93,170,255,.7),rgba(178,139,255,1));transition:width .2s;width:0%}
+.inst-num{font-family:'JetBrains Mono',monospace;font-size:10px;color:rgba(178,139,255,.85);min-width:28px;text-align:right}
+
+@media(max-width:620px){
+  .exp-inner{max-width:100%;padding:20px 16px 60px}
+  .ke-step{grid-template-columns:1fr}
+  .ke-canvas-wrap{border-right:none;border-bottom:1px solid rgba(255,255,255,.04);padding:18px}
+  .ke-step-text{padding:22px 18px}
+  .step-num{font-size:54px}
+  #axisSelect{flex-wrap:wrap;justify-content:center;bottom:68px}
+  #flipBadge{display:none}
+  #infoPanel{top:auto;bottom:130px;right:16px}
+}
+</style>
+</head>
+<body>
+
+<canvas id="mainCanvas"></canvas>
+
+<div id="simOverlay">
+  <div>
+    <div class="sim-label">Intermediate Axis Theorem · Dzhanibekov Effect</div>
+    <h1 class="sim-title">The Tennis Racket Theorem</h1>
+    <p class="sim-subtitle">Spin it like a frisbee — watch what happens</p>
+  </div>
+</div>
+
+<div id="infoPanel">
+  <div class="info-chip">Spin axis <strong id="axisLabel">Frisbee (unstable)</strong></div>
+  <div class="info-chip">|ω| <strong id="omegaVal">4.0</strong> rad/s</div>
+</div>
+
+<div id="flipBadge">
+  <div class="flip-label">Flips</div>
+  <div class="flip-num" id="flipCount">0</div>
+  <div class="flip-unit">complete 180° tumbles</div>
+</div>
+
+<div id="shapeSelect">
+  <button class="shape-btn active" data-shape="racket">Tennis Racket</button>
+  <button class="shape-btn" data-shape="thandle">T-Rod</button>
+  <button class="shape-btn" data-shape="explore">Explore ↗</button>
+</div>
+
+<!-- Explorer panel -->
+<div id="explorerPanel" style="display:none">
+  <div class="exp-ph">
+    <span class="exp-pt">Shape Explorer</span>
+    <button class="exp-pc" id="expClose">×</button>
+  </div>
+
+  <div class="exp-presets">
+    <button class="exp-preset" data-pos="50" data-spread="10">Sphere</button>
+    <button class="exp-preset" data-pos="1"  data-spread="20">Flat disk</button>
+    <button class="exp-preset" data-pos="45" data-spread="27">Book</button>
+    <button class="exp-preset ep-active" data-pos="78" data-spread="42">Racket</button>
+    <button class="exp-preset" data-pos="63" data-spread="37">T-rod</button>
+    <button class="exp-preset" data-pos="75" data-spread="49">Phone</button>
+    <button class="exp-preset" data-pos="60" data-spread="55">Satellite</button>
+    <button class="exp-preset" data-pos="99" data-spread="50">Thin rod</button>
+  </div>
+
+  <div class="exp-map-wrap">
+    <div class="exp-map-axes">
+      <div class="exp-map-y">spread (I₃/I₁) →</div>
+      <canvas id="stabilityMap" width="244" height="152"></canvas>
+    </div>
+    <div class="exp-map-x">
+      <span>← stable</span><span>I₂ position</span><span>stable →</span>
+    </div>
+  </div>
+
+  <div class="exp-sliders">
+    <div class="exp-sl-row">
+      <div class="exp-sl-label"><span>I₂ position (stability)</span><strong id="posLabel">0.78</strong></div>
+      <input type="range" class="exp-slider" id="posSlider" min="0" max="100" value="78">
+    </div>
+    <div class="exp-sl-row">
+      <div class="exp-sl-label"><span>Spread  I₃/I₁</span><strong id="spreadLabel">4.2×</strong></div>
+      <input type="range" class="exp-slider" id="spreadSlider" min="10" max="80" value="42">
+    </div>
+  </div>
+
+  <div class="exp-stats">
+    <div class="exp-i-row">
+      <div class="exp-i-cell"><div class="exp-i-name">I₁ smallest</div><div class="exp-i-val" id="i1Val">1.00</div></div>
+      <div class="exp-i-cell unstable"><div class="exp-i-name">I₂ ← unstable</div><div class="exp-i-val" id="i2Val">3.50</div></div>
+      <div class="exp-i-cell"><div class="exp-i-name">I₃ largest</div><div class="exp-i-val" id="i3Val">4.20</div></div>
+    </div>
+    <div class="inst-row">
+      <span class="inst-lbl">Instability</span>
+      <div class="inst-bg"><div class="inst-fg" id="instFg"></div></div>
+      <span class="inst-num" id="instNum">—</span>
+    </div>
+  </div>
+</div>
+
+<div id="axisSelect">
+  <button class="axis-btn" data-axis="drill">↕ Drill (stable)</button>
+  <button class="axis-btn active" data-axis="frisbee">⊙ Frisbee (unstable)</button>
+  <button class="axis-btn" data-axis="endover">↔ End-over-end (stable)</button>
+</div>
+
+<div id="simButtons">
+  <button class="sim-btn" id="pauseBtn">Pause</button>
+  <button class="sim-btn" id="resetBtn">Reset</button>
+  <button class="sim-btn" id="axesBtn">Show axes</button>
+  <button class="sim-btn primary" id="whyBtn">Why does it flip? →</button>
+</div>
+
+<!-- Explanation overlay -->
+<div id="explainScreen" class="ke-simple">
+  <div class="exp-inner">
+
+    <div class="exp-header">
+      <button class="exp-back" id="backBtn">← Back</button>
+      <div class="exp-title-group">
+        <div class="exp-eyebrow">Tennis Racket Theorem · Physics Explainer</div>
+        <h2 class="exp-title">Why does it flip?</h2>
+      </div>
+      <div class="ke-controls-bar">
+        <button class="ke-level-btn active" data-level="simple">Simple</button>
+        <button class="ke-level-btn" data-level="detail">Detailed</button>
+      </div>
+    </div>
+
+    <div class="steps-list">
+
+      <div class="ke-step">
+        <div class="step-num">1</div>
+        <div class="ke-canvas-wrap"><canvas id="stepCanvas1" width="272" height="196"></canvas></div>
+        <div class="ke-step-text">
+          <div class="step-tag">Step 01 — Anatomy</div>
+          <h3 class="step-heading">Every object has three spin axes</h3>
+          <p class="step-body ke-simple-only">Any object flying freely in space has exactly <strong>three principal axes of rotation</strong> — like three different ways you could spin it. For a tennis racket: like a <em>drill</em>, like a <em>frisbee</em>, or <em>end-over-end</em>.</p>
+          <p class="step-body ke-detail-only">Any rigid body possesses three mutually perpendicular <strong>principal axes of inertia</strong> — the eigenvectors of the inertia tensor <strong>I</strong>. Each axis has an associated scalar moment of inertia I₁ ≤ I₂ ≤ I₃. For a tennis racket: I₁ ≈ handle axis (smallest), I₂ ≈ face normal (intermediate), I₃ ≈ lateral axis (largest).</p>
+        </div>
+      </div>
+
+      <div class="step-sep"></div>
+
+      <div class="ke-step">
+        <div class="step-num">2</div>
+        <div class="ke-canvas-wrap"><canvas id="stepCanvas2" width="272" height="196"></canvas></div>
+        <div class="ke-step-text">
+          <div class="step-tag">Step 02 — Stability</div>
+          <h3 class="step-heading">Two of them are perfectly stable</h3>
+          <p class="step-body ke-simple-only">Spin it around the <strong>handle</strong> or <strong>end-over-end</strong> and the rotation is <em>stable</em>. Even if you nudge it off-axis, the wobble bounces back — like a ball in a bowl. The animation shows a real small wobble that <em>stays bounded</em>.</p>
+          <p class="step-body ke-detail-only">Euler's rotation equations predict rotation about I₁ and I₃ is Lyapunov-stable. Linearizing about ω = ω₀ê₁ gives δ̈ω ~ −λ²δω (λ² &gt; 0) — a harmonic oscillator. The perturbation oscillates at frequency λ but never grows. Both extremal axes sit at energy minima/maxima on the angular-momentum sphere, so perturbations have a restoring force.</p>
+        </div>
+      </div>
+
+      <div class="step-sep"></div>
+
+      <div class="ke-step">
+        <div class="step-num">3</div>
+        <div class="ke-canvas-wrap"><canvas id="stepCanvas3" width="272" height="196"></canvas></div>
+        <div class="ke-step-text">
+          <div class="step-tag">Step 03 — Instability</div>
+          <h3 class="step-heading">The middle axis triggers a chain reaction</h3>
+          <p class="step-body ke-simple-only">Spin it around the face-normal axis and a tiny tilt doesn't bounce back — it <strong>amplifies itself</strong>. The tilt pushes spin into the handle axis. That pushes spin into the lateral axis. That reverses the face spin. It's a chain reaction, not a gradual drift. The graph shows what it looks like: long flat stretches near ±4 rad/s, then a sudden flip. Small initial nudge → same flips, just slower.</p>
+          <p class="step-body ke-detail-only">Near I₂, the Euler equations give δ̈ω ~ +λ²δω — a positive feedback (λ² = ω₀²(I₃−I₂)(I₂−I₁)/(I₁I₃) &gt; 0). I₂ is a <strong>saddle point</strong> of kinetic energy T on the angular-momentum sphere — unlike I₁ (energy max) and I₃ (energy min), it has no restoring force. The ω-vector traces a <em>heteroclinic orbit</em> connecting the two I₂ poles, which is why the face-spin component ωz steps between ±|ω| rather than oscillating smoothly. Flip period: T = 2K(k)/λ.</p>
+          <div class="ke-detail-only" style="margin-top:8px">
+            <div class="slider-row"><span>Perturbation size</span><span id="pertLabel">5%</span></div>
+            <input type="range" class="ke-slider" id="pertSlider" min="1" max="25" value="5">
+          </div>
+        </div>
+      </div>
+
+      <div class="step-sep"></div>
+
+      <div class="ke-step">
+        <div class="step-num">4</div>
+        <div class="ke-canvas-wrap"><canvas id="stepCanvas4" width="272" height="196"></canvas></div>
+        <div class="ke-step-text">
+          <div class="step-tag">Step 04 — In space</div>
+          <h3 class="step-heading">In orbit, it never stops</h3>
+          <p class="step-body ke-simple-only">On Earth, air and your hand dampen the tumbling quickly. In space there's <strong>nothing to slow it down</strong>. Notice the <em>gold marker</em> — that's the angular momentum vector <strong>L</strong>, which stays perfectly fixed in space while the racket tumbles wildly around it. Soviet cosmonaut <em>Vladimir Dzhanibekov</em> discovered this with a wing nut aboard Salyut 7 in 1985.</p>
+          <p class="step-body ke-detail-only">Euler's equations conserve both T = ½ΣIᵢωᵢ² and |L|² = ΣIᵢ²ωᵢ². The ω-vector must lie on the intersection of the energy ellipsoid and the angular-momentum sphere simultaneously. Near I₂ this intersection is a figure-8 <strong>heteroclinic orbit</strong> connecting two unstable fixed points — the trajectory crosses between hemispheres each flip. The gold indicator shows L fixed in the lab frame; the racket tumbles around it indefinitely without dissipation.</p>
+        </div>
+      </div>
+
+    </div>
+
+    <div class="ke-callout">
+      <div class="callout-h">The takeaway</div>
+      <p class="callout-b">This isn't a quirk of tennis rackets — it happens to any rigid body with three <em>distinct</em> moments of inertia. The intermediate axis is a <strong>saddle point</strong> of kinetic energy on the angular-momentum sphere: stable when perturbed in one plane, unstable in the other. Asteroids tumble this way. Spacecraft engineers must account for it — satellites need active nutation dampers to bleed energy out of the unstable wobble mode and stay pointing at their targets.</p>
+    </div>
+
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.min.js"></script>
+<script>
+// ── Shape definitions with analytically-computed moments of inertia ──
+// Body frame for both shapes: Y = handle/stem axis (pointing up through handle).
+//
+// RACKET  (thin-rod approx, head rx=1.1 ry=1.4, handle ~3.2):
+//   Y = handle → I_Y = 1.0   SMALLEST     (stable)
+//   Z = face normal → I_Z = 3.5  INTERMEDIATE (UNSTABLE)
+//   X = lateral → I_X = 4.2  LARGEST      (stable)
+//
+// T-HANDLE  — whether the HANDLE spin is stable depends on geometry.
+//   The crossover condition is when I_X (crossbar end-over-end) = I_Y (handle spin).
+//   For L_c = 3.0: crossover stem length ≈ 2.15.
+//     L_s > 2.15 → I_Y < I_X → handle = smallest → STABLE  (long stem, textbook case)
+//     L_s < 2.15 → I_X < I_Y → handle = INTERMEDIATE → UNSTABLE  (short stem, classic demo)
+//
+//   We use L_s=1.5, L_c=3.0 (short-stem, matches classic demo videos):
+//   y_com = L_s·(L_s/2 + L_c)/(L_s+L_c) = 1.5·3.75/4.5 = 1.25 from stem base
+//   I_X = [(L_s−y_com)³ + y_com³]/3 + L_c·(L_s−y_com)²
+//       = [(0.25)³+(1.25)³]/3 + 3·(0.25)²         = 0.844   SMALLEST  (stable)
+//   I_Y = (1/12)·L_c·L_c² = 3³/12                 = 2.25    INTERMEDIATE (UNSTABLE!)
+//   I_Z = I_X_stem + L_c³/12 + L_c·(L_s−y_com)²   = 3.094   LARGEST   (stable)
+//   Unstable axis = Y (handle spin — the crossbar sweeps end-over-end and flips)
+
+const SHAPE_DEFS = {
+  racket: {
+    IX: 4.2, IY: 1.0, IZ: 3.5,
+    inits: {
+      frisbee: { x:.10, y:.10, z:4.0 },
+      drill:   { x:.08, y:4.0, z:.08 },
+      endover: { x:4.0, y:.08, z:.08 }
+    },
+    btnText: {
+      frisbee: '⊙ Face normal (unstable)',
+      drill:   '↕ Handle (stable)',
+      endover: '↔ Lateral (stable)'
+    },
+    infoLabel: {
+      frisbee: 'Face normal (UNSTABLE)',
+      drill:   'Handle (stable)',
+      endover: 'Lateral (stable)'
+    },
+    flipVec: new THREE.Vector3(0,0,1), flipComp: 'z'  // face normal flips in world-Z
+  },
+  thandle: {
+    // L_s=1.5, L_c=3.0: short stem → handle (Y) is the UNSTABLE intermediate axis
+    IX: 0.844, IY: 2.25, IZ: 3.094,
+    inits: {
+      frisbee: { x:.10, y:2.5, z:.10 },  // handle spin (Y) = UNSTABLE
+      drill:   { x:2.5, y:.10, z:.10 },  // crossbar spin (X) = stable (smallest I)
+      endover: { x:.10, y:.10, z:2.5 }   // perpendicular (Z) = stable (largest I)
+    },
+    btnText: {
+      frisbee: '↕ Handle (unstable)',
+      drill:   '⊙ Crossbar (stable)',
+      endover: '↺ Perpendicular (stable)'
+    },
+    infoLabel: {
+      frisbee: 'Handle (UNSTABLE)',
+      drill:   'Crossbar (stable)',
+      endover: 'Perpendicular (stable)'
+    },
+    flipVec: new THREE.Vector3(1,0,0), flipComp: 'x'  // crossbar (X) flips in world-X during handle spin
+  }
+};
+
+// Explorer: IY=I₁ (smallest, fixed=1), IZ=I₂ (intermediate, UNSTABLE), IX=I₃ (largest)
+// Both sliders control IZ and IX; IY stays 1.0.
+SHAPE_DEFS.explore = {
+  IX: 4.2, IY: 1.0, IZ: 3.5,
+  inits: {
+    frisbee: { x:.10, y:.10, z:3.0 },
+    drill:   { x:.10, y:3.0, z:.10 },
+    endover: { x:3.0, y:.10, z:.10 }
+  },
+  btnText: {
+    frisbee: '⊙ Intermediate (unstable)',
+    drill:   '↕ Smallest (stable)',
+    endover: '↔ Largest (stable)'
+  },
+  infoLabel: {
+    frisbee: 'Intermediate (UNSTABLE)',
+    drill:   'Smallest (stable)',
+    endover: 'Largest (stable)'
+  },
+  flipVec: new THREE.Vector3(0,0,1), flipComp: 'z'
+};
+
+let IX = 4.2, IY = 1.0, IZ = 3.5;
+
+// ── Scene ──
+const renderer = new THREE.WebGLRenderer({ canvas: document.getElementById('mainCanvas'), antialias: true });
+renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+renderer.setSize(innerWidth, innerHeight);
+renderer.setClearColor(0x0d1a35, 1);
+
+const scene = new THREE.Scene();
+const camera = new THREE.PerspectiveCamera(48, innerWidth / innerHeight, 0.1, 800);
+
+scene.add(new THREE.AmbientLight(0x3a5a9a, 2.2));
+const pl1 = new THREE.PointLight(0x7abfff, 8, 80); pl1.position.set(7, 6, 5); scene.add(pl1);
+const pl2 = new THREE.PointLight(0xc8a0ff, 5, 80); pl2.position.set(-5, -4, 3); scene.add(pl2);
+const pl3 = new THREE.PointLight(0xffffff, 3, 40); pl3.position.set(0, 0, 6); scene.add(pl3);
+
+// ── Build racket ──
+function buildRacket() {
+  const g = new THREE.Group();
+  const rx = 1.1, ry = 1.4;
+
+  const frameMat = new THREE.MeshStandardMaterial({
+    color: 0x2a4ae0, metalness: 0.55, roughness: 0.22,
+    emissive: 0x1020a0, emissiveIntensity: 1.0
+  });
+
+  // Elliptical head frame
+  const hp = [];
+  for (let i = 0; i <= 80; i++) {
+    const t = (i / 80) * Math.PI * 2;
+    hp.push(new THREE.Vector3(Math.cos(t) * rx, Math.sin(t) * ry, 0));
+  }
+  g.add(new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(hp, true), 80, 0.062, 8, true), frameMat));
+
+  // Throat struts
+  for (const s of [-1, 1]) {
+    const pts = [
+      new THREE.Vector3(s * rx * 0.52, -ry + 0.08, 0),
+      new THREE.Vector3(s * 0.25, -ry - 0.34, 0),
+      new THREE.Vector3(s * 0.062, -ry - 0.7, 0)
+    ];
+    g.add(new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts), 16, 0.048, 6, false), frameMat));
+  }
+
+  // Handle
+  const gripMat = new THREE.MeshStandardMaterial({ color: 0x090910, roughness: 0.9, metalness: 0.05 });
+  const tapeMat = new THREE.MeshStandardMaterial({ color: 0x14142a, roughness: 1.0, metalness: 0.0 });
+
+  const hBase = -ry - 0.7;
+  const h1 = new THREE.Mesh(new THREE.CylinderGeometry(0.046, 0.054, 1.8, 12), gripMat);
+  h1.position.y = hBase - 0.9; g.add(h1);
+
+  const h2 = new THREE.Mesh(new THREE.CylinderGeometry(0.052, 0.061, 1.0, 12), tapeMat);
+  h2.position.y = hBase - 2.1; g.add(h2);
+
+  const cap = new THREE.Mesh(new THREE.SphereGeometry(0.062, 8, 5, 0, Math.PI*2, 0, Math.PI*0.55), gripMat);
+  cap.rotation.x = Math.PI; cap.position.y = hBase - 2.65; g.add(cap);
+
+  // Strings
+  const sm = new THREE.LineBasicMaterial({ color: 0xbcd5ff, transparent: true, opacity: 0.44 });
+  const sp = 0.22;
+  for (let x = -rx + sp*.5; x < rx; x += sp) {
+    const ye = ry * Math.sqrt(Math.max(0, 1-(x/rx)**2)) - 0.07;
+    if (ye < 0.04) continue;
+    g.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(x,-ye,.004), new THREE.Vector3(x,ye,.004)]), sm));
+  }
+  for (let y = -ry + sp*.5; y < ry; y += sp) {
+    const xe = rx * Math.sqrt(Math.max(0, 1-(y/ry)**2)) - 0.07;
+    if (xe < 0.04) continue;
+    g.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(-xe,y,.004), new THREE.Vector3(xe,y,.004)]), sm));
+  }
+
+  scene.add(g);
+  return g;
+}
+
+// ── Build T-handle rod ──
+// Short-stem geometry: L_s=1.5, L_c=3.0, equal density → handle (Y) is UNSTABLE.
+// y_com = L_s*(L_s/2 + L_c)/(L_s+L_c) = 1.5*3.75/4.5 = 1.25 from stem base.
+// In COM frame: crossbar at y=+0.25, stem tip at y=−1.25.
+function buildTHandle() {
+  const g = new THREE.Group();
+  const L_s = 1.5, L_c = 3.0, r = 0.15;
+  const y_com = 1.25;
+
+  const mat = new THREE.MeshStandardMaterial({
+    color: 0xd04010, metalness: 0.75, roughness: 0.18,
+    emissive: 0x701800, emissiveIntensity: 0.9
+  });
+
+  // Stem: CylinderGeometry centered at L_s/2 in original coords → shift by -y_com
+  const stem = new THREE.Mesh(new THREE.CylinderGeometry(r, r * 1.08, L_s, 18), mat);
+  stem.position.y = L_s / 2 - y_com;
+  g.add(stem);
+
+  // Crossbar: rotated cylinder along X, at y = L_s - y_com in COM frame
+  const cb = new THREE.Mesh(new THREE.CylinderGeometry(r, r, L_c, 18), mat);
+  cb.rotation.z = Math.PI / 2;
+  cb.position.y = L_s - y_com;
+  g.add(cb);
+
+  // End caps and junction
+  const capGeo = new THREE.SphereGeometry(r, 12, 8);
+  for (const sx of [-1, 1]) {
+    const cap = new THREE.Mesh(capGeo, mat);
+    cap.position.set(sx * L_c / 2, L_s - y_com, 0);
+    g.add(cap);
+  }
+  // Bottom of stem
+  const botCap = new THREE.Mesh(new THREE.SphereGeometry(r * 1.08, 12, 8), mat);
+  botCap.position.y = -y_com;
+  g.add(botCap);
+
+  scene.add(g);
+  return g;
+}
+
+// ── Poinsot inertia ellipsoid (for explorer mode) ──
+// Semi-axes ∝ 1/√I — the axis with smallest I is the longest.
+// Morphs in real-time as the user drags sliders.
+function buildEllipsoid() {
+  const geo = new THREE.SphereGeometry(1.0, 48, 32);
+  const mat = new THREE.MeshStandardMaterial({
+    color: 0x18c080, metalness: 0.35, roughness: 0.28,
+    emissive: 0x063820, emissiveIntensity: 0.7,
+    transparent: true, opacity: 0.78
+  });
+  const mesh = new THREE.Mesh(geo, mat);
+  const wfMat = new THREE.MeshBasicMaterial({ color: 0x40ffaa, wireframe: true, transparent: true, opacity: 0.13 });
+  mesh.add(new THREE.Mesh(geo, wfMat));
+  scene.add(mesh);
+  return mesh;
+}
+
+// ── Explorer preset shape meshes ──
+function buildPresetMeshes() {
+  const meshes = {};
+
+  function mat(color, emit) {
+    return new THREE.MeshStandardMaterial({
+      color, metalness: 0.42, roughness: 0.28,
+      emissive: emit, emissiveIntensity: 0.65,
+      transparent: true, opacity: 0.88
+    });
+  }
+
+  // Sphere — all moments equal
+  const sg = new THREE.Group();
+  sg.add(new THREE.Mesh(new THREE.SphereGeometry(1.7, 40, 28), mat(0x4488dd, 0x0a1840)));
+  scene.add(sg); sg.visible = false;
+  meshes['Sphere'] = sg;
+
+  // Flat disk — cylinder axis along X (= IX = largest I); Y = diameter = smallest I (stable drill)
+  // Physics: IY≈IZ (both small, pos≈0), IX large — matches a pancake where spinning
+  // around the two diameter axes is nearly degenerate (almost no instability).
+  const dg = new THREE.Group();
+  const diskM = new THREE.Mesh(new THREE.CylinderGeometry(2.1, 2.1, 0.22, 56), mat(0x28c890, 0x063828));
+  diskM.rotation.z = Math.PI / 2; // cylinder axis → X axis (largest I)
+  dg.add(diskM);
+  scene.add(dg); dg.visible = false;
+  meshes['Flat disk'] = dg;
+
+  // Book — X=thin binding, Y=tall spine, Z=wide pages
+  const bg = new THREE.Group();
+  bg.add(new THREE.Mesh(new THREE.BoxGeometry(0.36, 2.8, 2.1), mat(0xd08028, 0x3a1c06)));
+  const ridgeMat = mat(0xb06010, 0x280c02);
+  [-1.09, 1.09].forEach(z => {
+    const r = new THREE.Mesh(new THREE.BoxGeometry(0.38, 2.8, 0.06), ridgeMat);
+    r.position.z = z; bg.add(r);
+  });
+  scene.add(bg); bg.visible = false;
+  meshes['Book'] = bg;
+
+  // Phone — X=very thin, Y=tall, Z=narrow width
+  const pg = new THREE.Group();
+  pg.add(new THREE.Mesh(new THREE.BoxGeometry(0.14, 3.2, 1.5), mat(0x5868a0, 0x0e1428)));
+  const screenMat = new THREE.MeshStandardMaterial({
+    color: 0x1040c8, roughness: 0.04, metalness: 0.0,
+    emissive: 0x0828b0, emissiveIntensity: 0.9, transparent: true, opacity: 0.88
+  });
+  pg.add(new THREE.Mesh(new THREE.BoxGeometry(0.146, 2.78, 1.18), screenMat));
+  scene.add(pg); pg.visible = false;
+  meshes['Phone'] = pg;
+
+  // Satellite — cube body + flat solar wings along Z + boom along Y
+  // Wings along Z: Iz (spinning around the wingspan) is physically smallest → IY=I₁ in
+  // explorer frame requires Y=smallest. So we orient wings along Z and rotate the whole
+  // group so Z-wingspan maps to body-Y: satg.rotation.x = -π/2 tilts Z→Y.
+  // Equivalent: just build with wings extending along Y (boom direction = smallest I).
+  // Wings along Y: Iy (spin around boom) ≈ small → IY=smallest ✓; IX,IZ large ✓.
+  const satg = new THREE.Group();
+  satg.add(new THREE.Mesh(new THREE.BoxGeometry(1.0, 1.0, 1.0), mat(0xb0b8cc, 0x181828)));
+  const panelMat = mat(0x1855c0, 0x041048);
+  // Panels extend along Y (up/down): spinning around Y (boom) = small I = IY=I₁ ✓
+  [-1.55, 1.55].forEach(y => {
+    const p = new THREE.Mesh(new THREE.BoxGeometry(1.1, 2.4, 0.05), panelMat);
+    p.position.y = y; satg.add(p);
+  });
+  // Dish antenna pointing along Z
+  const ant = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.03, 1.0, 8), mat(0xd0d8e8, 0x101820));
+  ant.rotation.x = Math.PI / 2; ant.position.z = 1.0; satg.add(ant);
+  const dish = new THREE.Mesh(new THREE.CylinderGeometry(0.35, 0.05, 0.18, 20, 1, true), mat(0xd0d8e8, 0x101828));
+  dish.rotation.x = -Math.PI / 2; dish.position.z = 1.55; satg.add(dish);
+  scene.add(satg); satg.visible = false;
+  meshes['Satellite'] = satg;
+
+  // Thin rod — long slender cylinder along Y with end caps
+  const rodg = new THREE.Group();
+  rodg.add(new THREE.Mesh(new THREE.CylinderGeometry(0.11, 0.11, 4.8, 16), mat(0xa06080, 0x280818)));
+  const capMat = mat(0xcc8aaa, 0x380a20);
+  [-2.4, 2.4].forEach(y => {
+    const cap = new THREE.Mesh(new THREE.SphereGeometry(0.16, 12, 8), capMat);
+    cap.position.y = y; rodg.add(cap);
+  });
+  scene.add(rodg); rodg.visible = false;
+  meshes['Thin rod'] = rodg;
+
+  return meshes;
+}
+
+// ── Stars ──
+(function() {
+  const N = 2500, pos = new Float32Array(N*3);
+  for (let i = 0; i < N; i++) {
+    const r = 150 + Math.random()*350, th = Math.random()*Math.PI*2, ph = Math.acos(2*Math.random()-1);
+    pos[i*3]=r*Math.sin(ph)*Math.cos(th); pos[i*3+1]=r*Math.sin(ph)*Math.sin(th); pos[i*3+2]=r*Math.cos(ph);
+  }
+  const geo = new THREE.BufferGeometry(); geo.setAttribute('position', new THREE.BufferAttribute(pos,3));
+  scene.add(new THREE.Points(geo, new THREE.PointsMaterial({ color:0xffffff, size:.32, sizeAttenuation:false, transparent:true, opacity:.58 })));
+})();
+
+// ── Axis arrows ──
+const O = new THREE.Vector3();
+const arrowX = new THREE.ArrowHelper(new THREE.Vector3(1,0,0), O, 2.9, 0x5daaff, .34,.2);
+const arrowY = new THREE.ArrowHelper(new THREE.Vector3(0,1,0), O, 3.5, 0x50dc78, .34,.2);
+const arrowZ = new THREE.ArrowHelper(new THREE.Vector3(0,0,1), O, 2.9, 0xb28bff, .38,.22);
+let showAxes = false;
+[arrowX, arrowY, arrowZ].forEach(a => { a.visible = false; scene.add(a); });
+
+function updateArrows() {
+  if (!showAxes) return;
+  arrowX.setDirection(new THREE.Vector3(1,0,0).applyQuaternion(quat));
+  arrowY.setDirection(new THREE.Vector3(0,1,0).applyQuaternion(quat));
+  arrowZ.setDirection(new THREE.Vector3(0,0,1).applyQuaternion(quat));
+}
+
+// ── Physics ──
+let quat = new THREE.Quaternion();
+let omega = { x:.1, y:.1, z:4.0 };
+let paused = false;
+let flipCount = 0;
+let flipPhase = 0;
+let currentAxis = 'frisbee';
+let currentShape = 'racket';
+
+function eulerDeriv(w) {
+  return {
+    x: ((IY-IZ)/IX) * w.y * w.z,
+    y: ((IZ-IX)/IY) * w.z * w.x,
+    z: ((IX-IY)/IZ) * w.x * w.y
+  };
+}
+
+function rk4(w, dt) {
+  const k1 = eulerDeriv(w);
+  const w2 = { x:w.x+k1.x*dt/2, y:w.y+k1.y*dt/2, z:w.z+k1.z*dt/2 };
+  const k2 = eulerDeriv(w2);
+  const w3 = { x:w.x+k2.x*dt/2, y:w.y+k2.y*dt/2, z:w.z+k2.z*dt/2 };
+  const k3 = eulerDeriv(w3);
+  const w4 = { x:w.x+k3.x*dt, y:w.y+k3.y*dt, z:w.z+k3.z*dt };
+  const k4 = eulerDeriv(w4);
+  return {
+    x: w.x + (k1.x+2*k2.x+2*k3.x+k4.x)*dt/6,
+    y: w.y + (k1.y+2*k2.y+2*k3.y+k4.y)*dt/6,
+    z: w.z + (k1.z+2*k2.z+2*k3.z+k4.z)*dt/6
+  };
+}
+
+function stepPhysics(dt) {
+  omega = rk4(omega, dt);
+  const len = Math.sqrt(omega.x**2 + omega.y**2 + omega.z**2);
+  if (len > 1e-10) {
+    const s = Math.sin(len*dt/2) / len;
+    quat.multiply(new THREE.Quaternion(omega.x*s, omega.y*s, omega.z*s, Math.cos(len*dt/2))).normalize();
+  }
+  // Flip counter — track the shape-defined body axis in world space
+  if (currentAxis === 'frisbee') {
+    const sd = SHAPE_DEFS[currentShape];
+    const fv = sd.flipVec.clone().applyQuaternion(quat);
+    const fVal = fv[sd.flipComp];
+    if (flipPhase === 0 && fVal < -0.82) { flipPhase = 1; }
+    else if (flipPhase === 1 && fVal > 0.82) { flipPhase = 0; flipCount++; document.getElementById('flipCount').textContent = flipCount; }
+  }
+}
+
+// ── Camera orbit ──
+let camTheta = 0;
+function updateCamera(dt) {
+  camTheta += dt * 0.11;
+  camera.position.set(Math.sin(camTheta)*8, 1.4, Math.cos(camTheta)*8);
+  camera.lookAt(0, -0.5, 0);
+}
+
+const racketMesh = buildRacket();
+racketMesh.scale.setScalar(0.72);
+const thandleMesh = buildTHandle();
+thandleMesh.scale.setScalar(1.5);
+thandleMesh.visible = false;
+const ellipsoidMesh = buildEllipsoid();
+ellipsoidMesh.visible = false;
+const presetMeshes = buildPresetMeshes();
+let explorerActiveMesh = null;
+let currentExplorerPreset = 'Racket';
+const clock = new THREE.Clock();
+
+function animate() {
+  requestAnimationFrame(animate);
+  if (!paused) {
+    const dt = Math.min(clock.getDelta(), 1/30);
+    for (let i = 0; i < 4; i++) stepPhysics(dt/4);
+    updateCamera(dt);
+  } else { clock.getDelta(); }
+  racketMesh.quaternion.copy(quat);
+  thandleMesh.quaternion.copy(quat);
+  ellipsoidMesh.quaternion.copy(quat);
+  if (explorerActiveMesh && explorerActiveMesh !== racketMesh && explorerActiveMesh !== thandleMesh && explorerActiveMesh !== ellipsoidMesh) {
+    explorerActiveMesh.quaternion.copy(quat);
+  }
+  updateArrows();
+  const len = Math.sqrt(omega.x**2+omega.y**2+omega.z**2);
+  document.getElementById('omegaVal').textContent = len.toFixed(1);
+  renderer.render(scene, camera);
+}
+animate();
+
+// ── UI interactions ──
+function applyShape(shape) {
+  currentShape = shape;
+  const sd = SHAPE_DEFS[shape];
+  IX = sd.IX; IY = sd.IY; IZ = sd.IZ;
+  racketMesh.visible    = (shape === 'racket');
+  thandleMesh.visible   = (shape === 'thandle');
+  ellipsoidMesh.visible = false;
+  Object.values(presetMeshes).forEach(m => m.visible = false);
+  if (shape !== 'explore') explorerActiveMesh = null;
+  document.getElementById('explorerPanel').style.display = (shape === 'explore') ? 'block' : 'none';
+  if (shape === 'explore') { syncExplorerFromSliders(false); updateStabilityMap(); showExplorerShape(currentExplorerPreset); }
+  document.querySelectorAll('.axis-btn').forEach(btn => {
+    btn.textContent = sd.btnText[btn.dataset.axis];
+  });
+  currentAxis = 'frisbee';
+  document.querySelectorAll('.axis-btn').forEach(b => b.classList.remove('active'));
+  document.querySelector('.axis-btn[data-axis="frisbee"]').classList.add('active');
+  document.getElementById('axisLabel').textContent = sd.infoLabel.frisbee;
+  resetSim();
+}
+
+function showExplorerShape(presetName) {
+  currentExplorerPreset = presetName;
+  // Hide all candidates
+  ellipsoidMesh.visible = false;
+  racketMesh.visible = false;
+  thandleMesh.visible = false;
+  Object.values(presetMeshes).forEach(m => m.visible = false);
+  explorerActiveMesh = null;
+
+  if (presetName === null) {
+    // Custom slider position — show Poinsot ellipsoid
+    ellipsoidMesh.visible = true;
+    explorerActiveMesh = ellipsoidMesh;
+  } else if (presetName === 'Racket') {
+    racketMesh.visible = true;
+    explorerActiveMesh = racketMesh;
+  } else if (presetName === 'T-rod') {
+    thandleMesh.visible = true;
+    explorerActiveMesh = thandleMesh;
+  } else if (presetMeshes[presetName]) {
+    presetMeshes[presetName].visible = true;
+    explorerActiveMesh = presetMeshes[presetName];
+  } else {
+    // Fallback
+    ellipsoidMesh.visible = true;
+    explorerActiveMesh = ellipsoidMesh;
+  }
+}
+
+function resetSim() {
+  quat = new THREE.Quaternion();
+  omega = { ...SHAPE_DEFS[currentShape].inits[currentAxis] };
+  flipCount = 0; flipPhase = 0;
+  document.getElementById('flipCount').textContent = '0';
+}
+
+document.getElementById('pauseBtn').addEventListener('click', function() {
+  paused = !paused;
+  this.textContent = paused ? 'Resume' : 'Pause';
+  if (!paused) clock.start();
+});
+document.getElementById('resetBtn').addEventListener('click', resetSim);
+document.getElementById('axesBtn').addEventListener('click', function() {
+  showAxes = !showAxes;
+  [arrowX, arrowY, arrowZ].forEach(a => a.visible = showAxes);
+  this.textContent = showAxes ? 'Hide axes' : 'Show axes';
+  this.style.borderColor = showAxes ? 'rgba(178,139,255,.4)' : '';
+  this.style.color = showAxes ? 'rgba(222,211,255,.9)' : '';
+});
+
+document.querySelectorAll('.axis-btn').forEach(btn => {
+  btn.addEventListener('click', function() {
+    document.querySelectorAll('.axis-btn').forEach(b => b.classList.remove('active'));
+    this.classList.add('active');
+    currentAxis = this.dataset.axis;
+    document.getElementById('axisLabel').textContent = SHAPE_DEFS[currentShape].infoLabel[currentAxis];
+    resetSim();
+  });
+});
+
+document.querySelectorAll('.shape-btn').forEach(btn => {
+  btn.addEventListener('click', function() {
+    document.querySelectorAll('.shape-btn').forEach(b => b.classList.remove('active'));
+    this.classList.add('active');
+    applyShape(this.dataset.shape);
+  });
+});
+
+document.getElementById('whyBtn').addEventListener('click', () => {
+  document.getElementById('explainScreen').style.display = 'block';
+  document.getElementById('explainScreen').scrollTop = 0;
+});
+document.getElementById('backBtn').addEventListener('click', () => {
+  document.getElementById('explainScreen').style.display = 'none';
+});
+
+document.querySelectorAll('.ke-level-btn').forEach(btn => {
+  btn.addEventListener('click', function() {
+    document.querySelectorAll('.ke-level-btn').forEach(b => b.classList.remove('active'));
+    this.classList.add('active');
+    const scr = document.getElementById('explainScreen');
+    if (this.dataset.level === 'simple') scr.classList.add('ke-simple');
+    else scr.classList.remove('ke-simple');
+  });
+});
+
+window.addEventListener('resize', () => {
+  camera.aspect = innerWidth / innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(innerWidth, innerHeight);
+});
+
+// ── Explorer ──────────────────────────────────────────────────────────
+// Parameter space: I₁=1 (fixed), I₂=1+pos*(spread-1), I₃=spread.
+// Instability: λ/ω₀ = √[(I₃−I₂)(I₂−I₁)/(I₁·I₃)] = (spread−1)/√spread · √[pos(1−pos)]
+// Zero at pos=0 (I₁=I₂) or pos=1 (I₂=I₃) or spread=1 (sphere). Max at pos=0.5.
+
+const EXP_SPREAD_MAX = 8.0;
+// Max instability in visible range: spread=8, pos=0.5 → (7/√8)·0.5 ≈ 1.237
+const EXP_INST_MAX = (EXP_SPREAD_MAX - 1) / Math.sqrt(EXP_SPREAD_MAX) * 0.5;
+
+function ellipsoidScaleFromI(i1, i2, i3) {
+  // Semi-axes ∝ 1/√I — longest axis = smallest I (= IY = i1 = 1 always)
+  const ax = 1/Math.sqrt(i3), ay = 1/Math.sqrt(i1), az = 1/Math.sqrt(i2);
+  const S = 2.3; // display radius
+  ellipsoidMesh.scale.set(ax/ay*S, S, az/ay*S);
+}
+
+function updateStabilityMap() {
+  const canvas = document.getElementById('stabilityMap');
+  if (!canvas) return;
+  const ctx = canvas.getContext('2d');
+  const W = canvas.width, H = canvas.height;
+  const img = ctx.createImageData(W, H);
+  const d = img.data;
+
+  for (let px = 0; px < W; px++) {
+    for (let py = 0; py < H; py++) {
+      const pos    = px / (W - 1);
+      const spread = 1.0 + (1 - py / (H - 1)) * (EXP_SPREAD_MAX - 1);
+      const raw    = (spread > 1) ? (spread-1)/Math.sqrt(spread) * Math.sqrt(Math.max(0, pos*(1-pos))) : 0;
+      const t      = Math.min(1, raw / EXP_INST_MAX);
+      const i = (py * W + px) * 4;
+      // Navy → blue → purple gradient
+      d[i]   = Math.round(4   + t * 155);
+      d[i+1] = Math.round(8   + t * 76);
+      d[i+2] = Math.round(20  + t * 230);
+      d[i+3] = 255;
+    }
+  }
+  ctx.putImageData(img, 0, 0);
+
+  // Grid line at pos=0.5 (peak instability)
+  ctx.strokeStyle = 'rgba(255,255,255,.12)'; ctx.lineWidth = .5; ctx.setLineDash([3,4]);
+  ctx.beginPath(); ctx.moveTo(W/2, 0); ctx.lineTo(W/2, H); ctx.stroke();
+  ctx.setLineDash([]);
+
+  // Preset reference dots
+  const refs = [
+    { name:'Racket',    pos:0.781, spread:4.20, c:'rgba(100,180,255,.95)' },
+    { name:'T-rod',     pos:0.625, spread:3.67, c:'rgba(220,80,30,.95)'   },
+    { name:'Book',      pos:0.449, spread:2.67, c:'rgba(255,215,80,.9)'   },
+    { name:'Phone',     pos:0.753, spread:4.93, c:'rgba(80,230,140,.9)'   },
+    { name:'Satellite', pos:0.600, spread:5.50, c:'rgba(200,160,255,.9)'  },
+  ];
+  for (const r of refs) {
+    const rx = r.pos * (W-1);
+    const ry = (H-1) * (1 - (r.spread - 1) / (EXP_SPREAD_MAX - 1));
+    if (ry < 0 || ry > H) continue;
+    ctx.fillStyle = r.c;
+    ctx.beginPath(); ctx.arc(rx, ry, 3.5, 0, Math.PI*2); ctx.fill();
+    ctx.fillStyle = 'rgba(255,255,255,.75)';
+    ctx.font = '8.5px JetBrains Mono,monospace'; ctx.textAlign = 'left';
+    ctx.fillText(r.name, rx + 5, ry + 3.5);
+  }
+
+  // Current position crosshair
+  const curPos    = document.getElementById('posSlider').value / 100;
+  const curSpread = document.getElementById('spreadSlider').value / 10;
+  const cx = curPos * (W-1);
+  const cy = (H-1) * (1 - (curSpread - 1) / (EXP_SPREAD_MAX - 1));
+  if (cy >= 0 && cy <= H) {
+    ctx.strokeStyle = 'rgba(255,210,60,.95)'; ctx.lineWidth = 1.5;
+    ctx.beginPath(); ctx.arc(cx, cy, 6, 0, Math.PI*2); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(cx-9,cy); ctx.lineTo(cx+9,cy); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(cx,cy-9); ctx.lineTo(cx,cy+9); ctx.stroke();
+  }
+}
+
+function syncExplorerFromSliders(doReset) {
+  const pos    = document.getElementById('posSlider').value / 100;
+  const spread = document.getElementById('spreadSlider').value / 10;
+  const i1 = 1.0, i3 = spread, i2 = 1.0 + pos * (i3 - 1.0);
+
+  // Update physics (IY=I₁ smallest, IZ=I₂ intermediate, IX=I₃ largest)
+  IY = i1; IZ = i2; IX = i3;
+  SHAPE_DEFS.explore.IY = i1; SHAPE_DEFS.explore.IZ = i2; SHAPE_DEFS.explore.IX = i3;
+
+  // Labels
+  document.getElementById('posLabel').textContent    = pos.toFixed(2);
+  document.getElementById('spreadLabel').textContent = spread.toFixed(1) + '×';
+  document.getElementById('i1Val').textContent = i1.toFixed(2);
+  document.getElementById('i2Val').textContent = i2.toFixed(2);
+  document.getElementById('i3Val').textContent = i3.toFixed(2);
+
+  // Instability bar (relative to max in visible range)
+  const raw = (i3 > i1) ? Math.sqrt(Math.max(0, (i3-i2)*(i2-i1)/(i1*i3))) : 0;
+  const pct = Math.min(100, raw / EXP_INST_MAX * 100);
+  document.getElementById('instFg').style.width = pct + '%';
+  document.getElementById('instNum').textContent = raw.toFixed(2);
+
+  ellipsoidScaleFromI(i1, i2, i3);
+  if (doReset) resetSim();
+}
+
+// Explorer preset buttons
+document.querySelectorAll('.exp-preset').forEach(btn => {
+  btn.addEventListener('click', function() {
+    document.querySelectorAll('.exp-preset').forEach(b => b.classList.remove('ep-active'));
+    this.classList.add('ep-active');
+    document.getElementById('posSlider').value    = this.dataset.pos;
+    document.getElementById('spreadSlider').value = this.dataset.spread;
+    if (currentShape === 'explore') {
+      syncExplorerFromSliders(true);
+      updateStabilityMap();
+      showExplorerShape(this.textContent.trim());
+    }
+  });
+});
+
+// Explorer sliders — update physics live without resetting (watch instability change mid-flip)
+['posSlider', 'spreadSlider'].forEach(id => {
+  document.getElementById(id).addEventListener('input', () => {
+    document.querySelectorAll('.exp-preset').forEach(b => b.classList.remove('ep-active'));
+    if (currentShape === 'explore') {
+      syncExplorerFromSliders(false);
+      updateStabilityMap();
+      showExplorerShape(null);
+    }
+  });
+});
+
+document.getElementById('expClose').addEventListener('click', () => {
+  // Switch back to racket
+  document.querySelectorAll('.shape-btn').forEach(b => b.classList.remove('active'));
+  document.querySelector('.shape-btn[data-shape="racket"]').classList.add('active');
+  applyShape('racket');
+});
+
+// ── Explanation canvas animations ──
+
+// Canvas 1: Three axes diagram
+(function() {
+  const cv = document.getElementById('stepCanvas1');
+  const ctx = cv.getContext('2d');
+  const W = cv.width, H = cv.height;
+  const cx = W/2 - 10, cy = H/2 - 10;
+  const rx = 58, ry = 72;
+  let t = 0;
+
+  function arrow(x1,y1,x2,y2,color,lw) {
+    const dx=x2-x1, dy=y2-y1, len=Math.sqrt(dx*dx+dy*dy);
+    const ux=dx/len, uy=dy/len;
+    const hLen=10, hW=5;
+    ctx.strokeStyle=color; ctx.fillStyle=color; ctx.lineWidth=lw;
+    ctx.beginPath(); ctx.moveTo(x1,y1); ctx.lineTo(x2-ux*hLen,y2-uy*hLen); ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(x2,y2);
+    ctx.lineTo(x2-ux*hLen-uy*hW, y2-uy*hLen+ux*hW);
+    ctx.lineTo(x2-ux*hLen+uy*hW, y2-uy*hLen-ux*hW);
+    ctx.fill();
+  }
+
+  function label(text, x, y, color) {
+    ctx.fillStyle = color; ctx.font = '10px JetBrains Mono, monospace';
+    ctx.textAlign = 'center'; ctx.fillText(text, x, y);
+  }
+
+  function draw() {
+    ctx.clearRect(0,0,W,H);
+    t += 0.025;
+
+    // Racket head
+    ctx.strokeStyle = 'rgba(255,255,255,.18)'; ctx.lineWidth = 2.5;
+    ctx.beginPath(); ctx.ellipse(cx, cy, rx, ry, 0, 0, Math.PI*2); ctx.stroke();
+
+    // Strings (light grid)
+    ctx.strokeStyle = 'rgba(255,255,255,.06)'; ctx.lineWidth = .8;
+    for (let x=-rx+12;x<rx;x+=14) {
+      const ye = ry*Math.sqrt(Math.max(0,1-(x/rx)**2));
+      ctx.beginPath(); ctx.moveTo(cx+x,cy-ye); ctx.lineTo(cx+x,cy+ye); ctx.stroke();
+    }
+    for (let y=-ry+14;y<ry;y+=14) {
+      const xe = rx*Math.sqrt(Math.max(0,1-(y/ry)**2));
+      ctx.beginPath(); ctx.moveTo(cx-xe,cy+y); ctx.lineTo(cx+xe,cy+y); ctx.stroke();
+    }
+
+    // Handle
+    ctx.strokeStyle='rgba(255,255,255,.18)'; ctx.lineWidth=5;
+    ctx.beginPath(); ctx.moveTo(cx,cy+ry); ctx.lineTo(cx,cy+ry+48); ctx.stroke();
+
+    // Axis Y: handle (green, stable)
+    const aY = .35 + Math.sin(t*.5)*.05;
+    arrow(cx,cy+ry+50, cx,cy-ry-22, `rgba(80,220,120,${aY})`, 2);
+    label('I₁ — drill (stable)', cx, cy-ry-28, `rgba(80,220,120,${aY+.1})`);
+
+    // Axis X: lateral (blue, stable)
+    const aX = .35 + Math.sin(t*.5+1)*.05;
+    arrow(cx-rx-22,cy, cx+rx+22,cy, `rgba(93,170,255,${aX})`, 2);
+    label('I₃ — end-over-end (stable)', cx, cy+ry+65, `rgba(93,170,255,${aX+.1})`);
+
+    // Axis Z: face normal (purple, UNSTABLE) — shown as pulsing dot/circle
+    const pulse = .5 + Math.sin(t*2.5)*.35;
+    ctx.save();
+    ctx.strokeStyle = `rgba(178,139,255,${pulse})`; ctx.lineWidth=2; ctx.setLineDash([3,3]);
+    ctx.beginPath(); ctx.ellipse(cx,cy,14,5,0,0,Math.PI*2); ctx.stroke();
+    ctx.setLineDash([]); ctx.restore();
+    arrow(cx+16,cy, cx+rx+22,cy-30, `rgba(178,139,255,${pulse})`, 2.2);
+    ctx.fillStyle=`rgba(178,139,255,${pulse+.1})`; ctx.font='bold 10px JetBrains Mono,monospace';
+    ctx.textAlign='left'; ctx.fillText('I₂ — frisbee (UNSTABLE)', cx+rx+25, cy-34);
+
+    requestAnimationFrame(draw);
+  }
+  draw();
+})();
+
+// Canvas 2: Stable rotation around handle (Y axis)
+(function() {
+  const cv = document.getElementById('stepCanvas2');
+  const ctx = cv.getContext('2d');
+  const W = cv.width, H = cv.height;
+  const cx = W/2, cy = H/2;
+  let t = 0;
+
+  // Simple 3D racket vertices (oval head in XZ plane + handle in -Y)
+  function getRacketLines(ry) {
+    const pts = [];
+    const N = 18;
+    for (let i=0;i<=N;i++) {
+      const a=(i/N)*Math.PI*2;
+      pts.push([Math.cos(a)*1.1, 0, Math.sin(a)*1.4]);
+    }
+    // handle points
+    return { oval: pts, handle: [[0,-0.0,0],[0,-3.2,0]] };
+  }
+
+  function rotY(x,y,z,a) { const c=Math.cos(a),s=Math.sin(a); return [x*c+z*s, y, -x*s+z*c]; }
+  function proj(x,y,z,sc) { const f=4/(4+z); return [cx+x*sc*f, cy-y*sc*f]; }
+
+  function draw() {
+    ctx.clearRect(0,0,W,H);
+    t += 0.028;
+
+    const sc = 46;
+    const tilt = 0.28;
+    // Small bounded nutation — oscillates but never grows
+    const nutAmp = 0.11;
+    const nut = Math.sin(t * 0.65) * nutAmp;
+
+    function transform(x,y,z) {
+      let [rx,ry2,rz] = rotY(x,y,z,t);
+      // Nutation (wobble around X after Y-spin)
+      const cn=Math.cos(nut), sn=Math.sin(nut);
+      [ry2,rz] = [ry2*cn - rz*sn, ry2*sn + rz*cn];
+      // Camera tilt
+      const ct=Math.cos(tilt), st=Math.sin(tilt);
+      const ny=ry2*ct - rz*st, nz=ry2*st + rz*ct;
+      return proj(rx,ny,nz,sc);
+    }
+
+    // Draw oval
+    const { oval, handle } = getRacketLines();
+    ctx.strokeStyle='rgba(93,170,255,.78)'; ctx.lineWidth=2;
+    ctx.beginPath();
+    for (let i=0;i<=18;i++) {
+      const [px,py] = transform(...oval[i]);
+      if(i===0) ctx.moveTo(px,py); else ctx.lineTo(px,py);
+    }
+    ctx.stroke();
+
+    // Handle
+    ctx.strokeStyle='rgba(255,255,255,.35)'; ctx.lineWidth=4;
+    ctx.beginPath();
+    const [hx0,hy0]=transform(...handle[0]); ctx.moveTo(hx0,hy0);
+    const [hx1,hy1]=transform(...handle[1]); ctx.lineTo(hx1,hy1);
+    ctx.stroke();
+
+    // Wobble angle arc (bottom-right mini indicator)
+    const wx=W-36, wy=H-32, wr=18;
+    // arc showing the bounded wobble range
+    ctx.strokeStyle='rgba(255,255,255,.12)'; ctx.lineWidth=1;
+    ctx.beginPath(); ctx.arc(wx, wy, wr, -Math.PI*0.7, Math.PI*0.7); ctx.stroke();
+    // moving needle at current nutation
+    const needleAngle = -Math.PI/2 + nut * 4.5; // amplified for readability
+    ctx.strokeStyle='rgba(80,220,120,.85)'; ctx.lineWidth=2;
+    ctx.beginPath();
+    ctx.moveTo(wx, wy);
+    ctx.lineTo(wx + Math.cos(needleAngle)*wr*0.82, wy + Math.sin(needleAngle)*wr*0.82);
+    ctx.stroke();
+    ctx.fillStyle='rgba(255,255,255,.22)'; ctx.font='7px DM Sans,sans-serif';
+    ctx.textAlign='center'; ctx.fillText('wobble', wx, wy+wr+9);
+
+    // Stable label
+    ctx.fillStyle='rgba(80,220,120,.82)'; ctx.font='bold 11px DM Sans,sans-serif';
+    ctx.textAlign='center'; ctx.fillText('✓ Wobble bounces back — stable', cx, H-12);
+
+    requestAnimationFrame(draw);
+  }
+  draw();
+})();
+
+// Canvas 3: Unstable rotation — left: tumbling racket, right: ωz time trace
+(function() {
+  const cv = document.getElementById('stepCanvas3');
+  const ctx = cv.getContext('2d');
+  const W = cv.width, H = cv.height;
+  const splitX = 134; // left panel width
+  const cx = splitX/2, cy = H/2 + 6;
+  // Right panel trace area
+  const tx0 = splitX + 6, txw = W - tx0 - 5;
+  const ty0 = 18, tyh = H - 32;
+  const tcy = ty0 + tyh/2, wzMax = 4.6, wyScale = tyh/2 / wzMax;
+  // Rolling buffer — sampled at ~30 Hz to show ~4 seconds per full width
+  const TLEN = 180;
+  const wzBuf = new Float32Array(TLEN);
+  let tHead = 0, tFilled = 0, frameN = 0;
+
+  let t = 0;
+  let mOmega = {x:.05,y:.05,z:4};
+  let mQuat = {x:0,y:0,z:0,w:1};
+  let flipFlash = 0;
+  let simTime = 0;
+  let pertScale = 0.05;
+
+  function qmul(a,b) {
+    return {
+      x: a.w*b.x+a.x*b.w+a.y*b.z-a.z*b.y,
+      y: a.w*b.y-a.x*b.z+a.y*b.w+a.z*b.x,
+      z: a.w*b.z+a.x*b.y-a.y*b.x+a.z*b.w,
+      w: a.w*b.w-a.x*b.x-a.y*b.y-a.z*b.z
+    };
+  }
+  function qnorm(q) {
+    const l=Math.sqrt(q.x**2+q.y**2+q.z**2+q.w**2);
+    return {x:q.x/l,y:q.y/l,z:q.z/l,w:q.w/l};
+  }
+  function qrotv(q,v) {
+    const qp = {x:v[0],y:v[1],z:v[2],w:0};
+    const qi = {x:-q.x,y:-q.y,z:-q.z,w:q.w};
+    const r = qmul(qmul(q,qp),qi);
+    return [r.x,r.y,r.z];
+  }
+
+  // Always use racket moments — this explainer illustrates the racket case specifically.
+  const _IX=4.2, _IY=1.0, _IZ=3.5;
+  function miniEuler(w) {
+    return { x:((_IY-_IZ)/_IX)*w.y*w.z, y:((_IZ-_IX)/_IY)*w.z*w.x, z:((_IX-_IY)/_IZ)*w.x*w.y };
+  }
+  function miniStep(dt) {
+    const k1=miniEuler(mOmega);
+    const w2={x:mOmega.x+k1.x*dt/2,y:mOmega.y+k1.y*dt/2,z:mOmega.z+k1.z*dt/2};
+    const k2=miniEuler(w2);
+    const w3={x:mOmega.x+k2.x*dt/2,y:mOmega.y+k2.y*dt/2,z:mOmega.z+k2.z*dt/2};
+    const k3=miniEuler(w3);
+    const w4={x:mOmega.x+k3.x*dt,y:mOmega.y+k3.y*dt,z:mOmega.z+k3.z*dt};
+    const k4=miniEuler(w4);
+    mOmega={x:mOmega.x+(k1.x+2*k2.x+2*k3.x+k4.x)*dt/6,y:mOmega.y+(k1.y+2*k2.y+2*k3.y+k4.y)*dt/6,z:mOmega.z+(k1.z+2*k2.z+2*k3.z+k4.z)*dt/6};
+    const len=Math.sqrt(mOmega.x**2+mOmega.y**2+mOmega.z**2);
+    if(len>1e-10){const s=Math.sin(len*dt/2)/len;mQuat=qnorm(qmul(mQuat,{x:mOmega.x*s,y:mOmega.y*s,z:mOmega.z*s,w:Math.cos(len*dt/2)}));}
+  }
+
+  let prevFaceZ = 1;
+  let mFlips = 0;
+
+  function draw() {
+    ctx.clearRect(0,0,W,H);
+    t += 1/60;
+    simTime += 1/60;
+
+    // Reset every 16s
+    if (simTime > 16) {
+      simTime=0; mFlips=0;
+      mQuat={x:0,y:0,z:0,w:1};
+      mOmega={x:pertScale,y:pertScale,z:4};
+      tHead=0; tFilled=0; frameN=0;
+    }
+
+    // Step physics
+    for(let i=0;i<3;i++) miniStep(1/180);
+
+    // Sample ωz into rolling buffer at ~30 Hz
+    frameN++;
+    if (frameN % 2 === 0) {
+      wzBuf[tHead % TLEN] = mOmega.z;
+      tHead++;
+      tFilled = Math.min(tFilled + 1, TLEN);
+    }
+
+    // Detect flip
+    const faceZ = qrotv(mQuat,[0,0,1])[2];
+    if(prevFaceZ>0 && faceZ<-0.8){mFlips++;flipFlash=1;}
+    else if(prevFaceZ<0 && faceZ>0.8){flipFlash=1;}
+    prevFaceZ=faceZ;
+    flipFlash*=0.88;
+
+    // ── Left panel: tumbling racket ────────────────────
+    ctx.save();
+    ctx.beginPath(); ctx.rect(0,0,splitX,H); ctx.clip();
+
+    if(flipFlash>0.1){
+      ctx.fillStyle=`rgba(178,139,255,${flipFlash*0.2})`;
+      ctx.fillRect(0,0,splitX,H);
+    }
+
+    const sc=40, N=16;
+    function tr(x,y,z) {
+      const [rx,ry2,rz]=qrotv(mQuat,[x,y,z]);
+      const f=4/(4+rz);
+      return [cx+rx*sc*f, cy-ry2*sc*f];
+    }
+
+    ctx.strokeStyle='rgba(178,139,255,.85)'; ctx.lineWidth=2;
+    ctx.beginPath();
+    for(let i=0;i<=N;i++){
+      const a=(i/N)*Math.PI*2;
+      const [px,py]=tr(Math.cos(a)*1.1, Math.sin(a)*1.4, 0);
+      if(i===0)ctx.moveTo(px,py); else ctx.lineTo(px,py);
+    }
+    ctx.stroke();
+    ctx.strokeStyle='rgba(255,255,255,.32)'; ctx.lineWidth=4;
+    ctx.beginPath();
+    const [hx0,hy0]=tr(0,-1.4,0); ctx.moveTo(hx0,hy0);
+    const [hx1,hy1]=tr(0,-4.0,0); ctx.lineTo(hx1,hy1); ctx.stroke();
+
+    if(flipFlash>0.28){
+      ctx.fillStyle=`rgba(178,139,255,${flipFlash})`;
+      ctx.font='bold 13px Exo 2,sans-serif'; ctx.textAlign='center';
+      ctx.fillText('FLIP!', cx, 22);
+    }
+    ctx.fillStyle='rgba(178,139,255,.6)'; ctx.font='10px DM Sans,sans-serif';
+    ctx.textAlign='center';
+    ctx.fillText(`${mFlips} flip${mFlips!==1?'s':''}`, cx, H-10);
+
+    ctx.restore();
+
+    // ── Divider ───────────────────────────────────────
+    ctx.strokeStyle='rgba(255,255,255,.07)'; ctx.lineWidth=1;
+    ctx.beginPath(); ctx.moveTo(splitX+0.5,4); ctx.lineTo(splitX+0.5,H-4); ctx.stroke();
+
+    // ── Right panel: ωz time trace ────────────────────
+    // Title
+    ctx.fillStyle='rgba(178,139,255,.6)'; ctx.font='7.5px JetBrains Mono,monospace';
+    ctx.textAlign='center'; ctx.fillText('ωz  face-spin', tx0+txw/2, ty0-4);
+
+    // Grid lines
+    ctx.strokeStyle='rgba(255,255,255,.07)'; ctx.lineWidth=0.5; ctx.setLineDash([2,3]);
+    const py4 = tcy - 4*wyScale, ny4 = tcy + 4*wyScale;
+    [py4, tcy, ny4].forEach(y => {
+      ctx.beginPath(); ctx.moveTo(tx0,y); ctx.lineTo(tx0+txw,y); ctx.stroke();
+    });
+    ctx.setLineDash([]);
+
+    // Axis labels
+    ctx.fillStyle='rgba(255,255,255,.28)'; ctx.font='7px JetBrains Mono,monospace';
+    ctx.textAlign='right';
+    ctx.fillText('+4', tx0-1, py4+3);
+    ctx.fillText('0', tx0-1, tcy+3);
+    ctx.fillText('-4', tx0-1, ny4+3);
+
+    // Stable plateau band highlights
+    ctx.fillStyle='rgba(80,220,120,.04)';
+    ctx.fillRect(tx0, py4-8, txw, 18);
+    ctx.fillRect(tx0, ny4-10, txw, 18);
+
+    // Trace line
+    if (tFilled > 1) {
+      ctx.beginPath();
+      ctx.strokeStyle='rgba(178,139,255,.9)'; ctx.lineWidth=1.3;
+      for (let i=0; i<tFilled; i++) {
+        const bufIdx = ((tHead - tFilled + i) % TLEN + TLEN) % TLEN;
+        const wz = wzBuf[bufIdx];
+        const px = tx0 + (i / (TLEN-1)) * txw;
+        const py = tcy - Math.max(-wzMax, Math.min(wzMax, wz)) * wyScale;
+        if (i===0) ctx.moveTo(px,py); else ctx.lineTo(px,py);
+      }
+      ctx.stroke();
+
+      // Current value dot (leading edge)
+      const curWz = wzBuf[(tHead-1+TLEN)%TLEN];
+      const dotX = tx0 + ((tFilled-1)/(TLEN-1)) * txw;
+      const dotY = tcy - Math.max(-wzMax, Math.min(wzMax, curWz)) * wyScale;
+      ctx.fillStyle='rgba(178,139,255,1)';
+      ctx.beginPath(); ctx.arc(dotX, dotY, 2.5, 0, Math.PI*2); ctx.fill();
+    }
+
+    // Stable labels on bands
+    ctx.fillStyle='rgba(80,220,120,.45)'; ctx.font='7px DM Sans,sans-serif';
+    ctx.textAlign='right';
+    ctx.fillText('stable', tx0+txw-2, py4-10);
+    ctx.fillText('stable', tx0+txw-2, ny4+22);
+
+    requestAnimationFrame(draw);
+  }
+  draw();
+
+  // Perturb slider
+  const slider = document.getElementById('pertSlider');
+  const pertLabel = document.getElementById('pertLabel');
+  if(slider) {
+    slider.addEventListener('input', function() {
+      pertScale = +this.value / 100;
+      pertLabel.textContent = this.value + '%';
+      simTime=13.5; // trigger reset soon
+    });
+  }
+})();
+
+// Canvas 4: Space scene — flips forever
+(function() {
+  const cv = document.getElementById('stepCanvas4');
+  const ctx = cv.getContext('2d');
+  const W = cv.width, H = cv.height;
+  let t = 0;
+  let s4Omega = {x:.08,y:.08,z:3.5};
+  let s4Quat = {x:0,y:0,z:0,w:1};
+  let s4Flips = 0;
+  let s4Flash = 0;
+  let s4PrevZ = 1;
+
+  function qmul(a,b){return{x:a.w*b.x+a.x*b.w+a.y*b.z-a.z*b.y,y:a.w*b.y-a.x*b.z+a.y*b.w+a.z*b.x,z:a.w*b.z+a.x*b.y-a.y*b.x+a.z*b.w,w:a.w*b.w-a.x*b.x-a.y*b.y-a.z*b.z};}
+  function qnorm(q){const l=Math.sqrt(q.x**2+q.y**2+q.z**2+q.w**2);return{x:q.x/l,y:q.y/l,z:q.z/l,w:q.w/l};}
+  function qrotv(q,v){const qp={x:v[0],y:v[1],z:v[2],w:0};const qi={x:-q.x,y:-q.y,z:-q.z,w:q.w};const r=qmul(qmul(q,qp),qi);return[r.x,r.y,r.z];}
+  // Always use racket moments — this explainer illustrates the racket case specifically.
+  const _rIX=4.2, _rIY=1.0, _rIZ=3.5;
+  function ed(w){return{x:((_rIY-_rIZ)/_rIX)*w.y*w.z,y:((_rIZ-_rIX)/_rIY)*w.z*w.x,z:((_rIX-_rIY)/_rIZ)*w.x*w.y};}
+  function sstep(dt){
+    const k1=ed(s4Omega);const w2={x:s4Omega.x+k1.x*dt/2,y:s4Omega.y+k1.y*dt/2,z:s4Omega.z+k1.z*dt/2};
+    const k2=ed(w2);const w3={x:s4Omega.x+k2.x*dt/2,y:s4Omega.y+k2.y*dt/2,z:s4Omega.z+k2.z*dt/2};
+    const k3=ed(w3);const w4={x:s4Omega.x+k3.x*dt,y:s4Omega.y+k3.y*dt,z:s4Omega.z+k3.z*dt};
+    const k4=ed(w4);
+    s4Omega={x:s4Omega.x+(k1.x+2*k2.x+2*k3.x+k4.x)*dt/6,y:s4Omega.y+(k1.y+2*k2.y+2*k3.y+k4.y)*dt/6,z:s4Omega.z+(k1.z+2*k2.z+2*k3.z+k4.z)*dt/6};
+    const len=Math.sqrt(s4Omega.x**2+s4Omega.y**2+s4Omega.z**2);
+    if(len>1e-10){const s=Math.sin(len*dt/2)/len;s4Quat=qnorm(qmul(s4Quat,{x:s4Omega.x*s,y:s4Omega.y*s,z:s4Omega.z*s,w:Math.cos(len*dt/2)}));}
+  }
+
+  // Static stars for canvas4
+  const stars4 = Array.from({length:60},()=>({x:Math.random()*W,y:Math.random()*H,r:Math.random()*1.2+.3}));
+
+  function draw() {
+    ctx.clearRect(0,0,W,H);
+    t += 1/60;
+    for(let i=0;i<4;i++) sstep(1/240);
+
+    const fz=qrotv(s4Quat,[0,0,1])[2];
+    if(s4PrevZ>0&&fz<-0.8){s4Flips++;s4Flash=1;}
+    else if(s4PrevZ<0&&fz>0.8){s4Flash=1;}
+    s4PrevZ=fz; s4Flash*=0.9;
+
+    // Stars
+    for(const s of stars4){
+      ctx.fillStyle=`rgba(255,255,255,${.3+Math.sin(t+s.x)*.1})`; ctx.beginPath();
+      ctx.arc(s.x,s.y,s.r,0,Math.PI*2); ctx.fill();
+    }
+
+    // Flash
+    if(s4Flash>0.15){ctx.fillStyle=`rgba(178,139,255,${s4Flash*0.15})`;ctx.fillRect(0,0,W,H);}
+
+    // Draw racket
+    const sc=34, cx2=W/2, cy2=H/2+5;
+    function tr(x,y,z){const[rx,ry2,rz]=qrotv(s4Quat,[x,y,z]);const f=4/(4+rz);return[cx2+rx*sc*f,cy2-ry2*sc*f];}
+    ctx.strokeStyle='rgba(178,139,255,.85)'; ctx.lineWidth=2;
+    ctx.beginPath();
+    for(let i=0;i<=16;i++){const a=(i/16)*Math.PI*2;const[px,py]=tr(Math.cos(a)*1.1,Math.sin(a)*1.4,0);if(i===0)ctx.moveTo(px,py);else ctx.lineTo(px,py);}
+    ctx.stroke();
+    ctx.strokeStyle='rgba(255,255,255,.28)'; ctx.lineWidth=3.5;
+    ctx.beginPath();const[h0x,h0y]=tr(0,-1.4,0);ctx.moveTo(h0x,h0y);const[h1x,h1y]=tr(0,-4.0,0);ctx.lineTo(h1x,h1y);ctx.stroke();
+
+    // Fixed angular-momentum indicator — L is conserved in lab frame
+    // L is nearly parallel to screen-Z (depth), so it appears as a fixed point/ring
+    // Draw it bottom-left as a crosshair target
+    const lx=30, ly=H-30, lR=13;
+    const lglow = 0.5 + Math.sin(t*1.8)*0.15;
+    ctx.strokeStyle=`rgba(255,210,60,${lglow})`; ctx.lineWidth=1.4;
+    ctx.beginPath(); ctx.arc(lx, ly, lR, 0, Math.PI*2); ctx.stroke();
+    ctx.strokeStyle=`rgba(255,210,60,${lglow*0.7})`; ctx.lineWidth=1;
+    [0,1,2,3].forEach(i=>{
+      const a=i*Math.PI/2;
+      ctx.beginPath();
+      ctx.moveTo(lx+Math.cos(a)*(lR+2), ly+Math.sin(a)*(lR+2));
+      ctx.lineTo(lx+Math.cos(a)*(lR+7), ly+Math.sin(a)*(lR+7));
+      ctx.stroke();
+    });
+    ctx.fillStyle=`rgba(255,210,60,${lglow+0.1})`; ctx.font='bold 8px JetBrains Mono,monospace';
+    ctx.textAlign='center'; ctx.fillText('L', lx, ly+3);
+    ctx.fillStyle=`rgba(255,210,60,.5)`; ctx.font='7px DM Sans,sans-serif';
+    ctx.fillText('fixed in space', lx, ly+lR+11);
+
+    // Flip counter
+    ctx.fillStyle='rgba(255,255,255,.12)'; ctx.fillRect(8,8,W-16,26);
+    ctx.fillStyle='rgba(178,139,255,.9)'; ctx.font='bold 12px Exo 2,sans-serif';
+    ctx.textAlign='left'; ctx.fillText(`Flip #${s4Flips}`, 16, 26);
+    ctx.fillStyle='rgba(255,255,255,.38)'; ctx.font='9px DM Sans,sans-serif';
+    ctx.textAlign='right'; ctx.fillText('…and counting forever', W-12, 26);
+
+    ctx.fillStyle='rgba(93,170,255,.48)'; ctx.font='9px DM Sans,sans-serif';
+    ctx.textAlign='center'; ctx.fillText('No air resistance. No friction. No end.', W/2, H-10);
+
+    requestAnimationFrame(draw);
+  }
+  draw();
+})();
+</script>
+</body>
+</html>
