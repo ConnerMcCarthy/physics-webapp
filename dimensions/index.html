@@ -1,0 +1,1919 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>The Dimension Tradeoff</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Exo+2:wght@200;300;400;500;600;700&family=DM+Sans:wght@300;400;500&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #030711;
+  --surface: rgba(255,255,255,0.03);
+  --border: rgba(255,255,255,0.08);
+  --purple: rgba(178,139,255,1);
+  --purple-dim: rgba(178,139,255,0.36);
+  --blue: rgba(93,170,255,1);          /* low dimension / "safe" / intuitive */
+  --blue-dim: rgba(93,170,255,0.30);
+  --orange: rgba(255,140,66,1);        /* high dimension / "danger" / counterintuitive */
+  --orange-dim: rgba(255,140,66,0.30);
+  --text: rgba(255,255,255,0.88);
+  --text-muted: rgba(255,255,255,0.5);
+  --text-faint: rgba(255,255,255,0.28);
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html,body{width:100%;background:var(--bg);color:var(--text);font-family:'DM Sans',sans-serif}
+
+canvas#stars{position:fixed;inset:0;width:100%;height:100%;z-index:0;pointer-events:none}
+body::before{
+  content:'';position:fixed;inset:0;z-index:0;pointer-events:none;
+  background:
+    radial-gradient(ellipse 80% 50% at 15% 0%, rgba(93,170,255,0.05) 0%, transparent 55%),
+    radial-gradient(ellipse 70% 45% at 85% 30%, rgba(255,140,66,0.045) 0%, transparent 55%),
+    radial-gradient(ellipse 60% 40% at 50% 100%, rgba(178,139,255,0.05) 0%, transparent 55%);
+}
+
+.page{position:relative;z-index:1;max-width:1180px;margin:0 auto;padding:80px 32px 100px}
+
+/* ── Top nav ── */
+.topnav{position:fixed;top:22px;left:28px;z-index:20}
+.back-link{display:inline-flex;align-items:center;gap:7px;padding:7px 14px 7px 11px;border-radius:8px;border:1px solid var(--border);background:rgba(3,7,17,.7);color:var(--text-muted);font-family:'DM Sans',sans-serif;font-size:12.5px;text-decoration:none;backdrop-filter:blur(10px);transition:all .18s}
+.back-link:hover{background:rgba(255,255,255,.06);color:var(--text)}
+
+/* ── Detail-level toggle ── */
+.level-toggle{display:inline-flex;background:rgba(255,255,255,.04);border:1px solid var(--border);border-radius:10px;padding:4px;gap:2px;margin-bottom:28px}
+.level-btn{padding:8px 22px;border-radius:7px;border:none;background:transparent;color:var(--text-muted);font-family:'DM Sans',sans-serif;font-size:13px;font-weight:500;cursor:pointer;transition:all .18s}
+.level-btn.active{background:rgba(178,139,255,.15);color:rgba(222,211,255,.95);box-shadow:0 0 0 1px rgba(178,139,255,.25)}
+.level-btn:hover:not(.active){background:rgba(255,255,255,.05);color:var(--text)}
+
+/* Simple/detailed prose visibility — scoped to a single class on .page,
+   not :not(), to keep the cascade unambiguous. Default = simple shown. */
+.simple-only{display:block}
+.detail-only{display:none!important}
+.page.detail-mode .simple-only{display:none}
+.page.detail-mode .detail-only{display:block!important}
+
+/* ── Hero ── */
+.hero{text-align:center;margin-bottom:64px}
+.site-label{font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:.32em;text-transform:uppercase;color:var(--blue);opacity:.8;margin-bottom:16px}
+.hero-title{font-family:'Exo 2',sans-serif;font-weight:700;font-size:clamp(34px,6vw,62px);letter-spacing:-0.03em;line-height:1.04;
+  background:linear-gradient(120deg,#fff 25%, var(--blue) 62%, var(--orange) 100%);
+  -webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;margin-bottom:20px}
+.hero-sub{font-family:'DM Sans',sans-serif;font-weight:300;font-size:clamp(14px,1.6vw,17px);color:var(--text-muted);max-width:640px;margin:0 auto 40px;line-height:1.7}
+.hero-sub strong{color:var(--text);font-weight:500}
+
+.hero-panel{max-width:560px;margin:0 auto;border-radius:16px;border:1px solid var(--border);background:var(--surface);padding:26px 30px 28px;text-align:left}
+.hero-panel-label{font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:.2em;text-transform:uppercase;color:var(--text-faint);margin-bottom:14px;display:flex;justify-content:space-between}
+.hero-panel-label span.val{color:var(--purple);font-weight:500}
+.hero-readouts{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:18px}
+.hero-stat{background:rgba(255,255,255,.025);border:1px solid rgba(255,255,255,.05);border-radius:10px;padding:12px 14px}
+.hero-stat .lbl{font-size:11px;color:var(--text-faint);margin-bottom:6px;line-height:1.4}
+.hero-stat .num{font-family:'JetBrains Mono',monospace;font-size:19px;font-weight:500;color:var(--text)}
+.hero-stat.danger .num{color:var(--orange)}
+.hero-stat.safe .num{color:var(--blue)}
+
+/* ── Sliders (shared pattern across all sections) ── */
+.slider-row{display:flex;justify-content:space-between;font-family:'JetBrains Mono',monospace;font-size:10.5px;color:var(--text-faint);margin-bottom:5px;letter-spacing:.02em}
+.slider-row .val{color:var(--text);font-weight:500}
+.ds-slider{width:100%;accent-color:var(--purple);cursor:pointer}
+.ctrl-block{margin-bottom:16px}
+.ctrl-block:last-child{margin-bottom:0}
+
+/* ── Section template (canvas | text) ── */
+.dim-section{display:grid;grid-template-columns:1.08fr 1fr;border-radius:18px;overflow:hidden;background:rgba(255,255,255,.018);border:1px solid rgba(255,255,255,.05);position:relative;margin-bottom:30px}
+.dim-section:hover{border-color:rgba(178,139,255,.12)}
+.dim-num{position:absolute;top:16px;left:20px;font-family:'Exo 2',sans-serif;font-weight:700;font-size:84px;line-height:1;color:rgba(178,139,255,.05);pointer-events:none;user-select:none;z-index:0}
+.dim-visual{position:relative;z-index:1;padding:32px 28px;display:flex;flex-direction:column;align-items:center;gap:16px;background:rgba(255,255,255,.012);border-right:1px solid rgba(255,255,255,.04)}
+.dim-visual canvas{display:block;border-radius:8px}
+.dim-caption{font-size:11.5px;color:var(--text-faint);font-style:italic;text-align:center;max-width:300px;line-height:1.55}
+.dim-text{position:relative;z-index:1;padding:38px 42px;display:flex;flex-direction:column;justify-content:center;gap:14px}
+.dim-tag{font-family:'JetBrains Mono',monospace;font-size:15px;letter-spacing:.12em;text-transform:uppercase;color:var(--purple);opacity:.9}
+.dim-heading{font-family:'Exo 2',sans-serif;font-weight:600;font-size:clamp(18px,2.2vw,25px);letter-spacing:-0.01em;color:#fff;line-height:1.18}
+.dim-body{font-size:14px;line-height:1.72;color:var(--text-muted);max-width:480px}
+.dim-body strong{color:var(--text);font-weight:500}
+.dim-body em{color:var(--orange);font-style:normal}
+
+.dim-controls{margin-top:6px;padding-top:16px;border-top:1px solid rgba(255,255,255,.05)}
+
+.dim-readout{margin-top:4px;border-radius:12px;border:1px solid rgba(255,140,66,.2);background:linear-gradient(135deg,rgba(255,140,66,.07),rgba(93,170,255,.035));padding:16px 19px;display:flex;flex-direction:column;gap:5px}
+.dim-readout .rl{font-size:11px;color:var(--text-faint);letter-spacing:.02em}
+.dim-readout .rn{font-family:'JetBrains Mono',monospace;font-size:26px;font-weight:500;color:#fff;line-height:1.15}
+.dim-readout .rn .unit{font-size:14px;color:var(--text-muted);font-weight:400;margin-left:4px}
+.dim-readout .rf{font-family:'JetBrains Mono',monospace;font-size:10.5px;color:var(--text-faint);margin-top:2px}
+.dim-readout .extra{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text-muted);margin-top:6px;padding-top:8px;border-top:1px solid rgba(255,255,255,.06)}
+
+/* Pair-selector buttons (word vector section) */
+.wv-pairs{display:flex;gap:8px;flex-wrap:wrap}
+.wv-pair-btn{padding:7px 15px;border-radius:8px;border:1px solid var(--border);background:rgba(255,255,255,.03);color:var(--text-muted);font-family:'DM Sans',sans-serif;font-size:12.5px;cursor:pointer;transition:all .18s}
+.wv-pair-btn:hover{background:rgba(255,255,255,.06);color:var(--text)}
+.wv-pair-btn.active{background:rgba(178,139,255,.14);border-color:var(--purple-dim);color:rgba(222,211,255,.95)}
+.diagram-legend{display:flex;gap:16px;justify-content:center;flex-wrap:wrap;font-size:10.5px;color:var(--text-faint);font-family:'JetBrains Mono',monospace}
+.diagram-legend span{display:inline-flex;align-items:center;gap:5px}
+.diagram-legend .dot{width:7px;height:7px;border-radius:50%;display:inline-block}
+
+@media (max-width: 880px){
+  .dim-section{grid-template-columns:1fr}
+  .dim-visual{border-right:none;border-bottom:1px solid rgba(255,255,255,.04)}
+
+  /* Simple mode: charts are hidden so the main canvas has extra room —
+     expand it to fill the container width instead of sitting at its
+     fixed attribute size. height:auto maintains the canvas aspect ratio. */
+  .page:not(.detail-mode) .dim-visual canvas{width:100%;height:auto}
+}
+
+/* ── Summary table ── */
+.summary-wrap{margin-bottom:30px;border-radius:18px;border:1px solid rgba(255,255,255,.05);background:rgba(255,255,255,.018);padding:38px 42px 30px;position:relative;overflow:hidden}
+.summary-wrap .dim-num{top:16px;left:20px}
+.summary-tag{font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:.22em;text-transform:uppercase;color:var(--purple);opacity:.75;margin-bottom:8px}
+.summary-heading{font-family:'Exo 2',sans-serif;font-weight:600;font-size:clamp(18px,2.2vw,25px);letter-spacing:-0.01em;color:#fff;margin-bottom:22px}
+.summary-table{width:100%;border-collapse:collapse;font-size:13.5px}
+.summary-table th, .summary-table td{padding:13px 16px;text-align:left;border-bottom:1px solid rgba(255,255,255,.06)}
+.summary-table thead th{font-family:'JetBrains Mono',monospace;font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--text-faint);font-weight:500;border-bottom:1px solid rgba(255,255,255,.12)}
+.summary-table thead th.lo{color:var(--blue)}
+.summary-table thead th.hi{color:var(--orange)}
+.summary-table td{color:var(--text-muted);line-height:1.5}
+.summary-table td.prop{color:var(--text);font-weight:500;white-space:nowrap}
+.summary-table tbody tr:last-child td{border-bottom:none}
+.summary-table tbody tr:hover td{background:rgba(255,255,255,.015)}
+@media (max-width: 760px){
+  .summary-table{font-size:12px}
+  .summary-table th, .summary-table td{padding:10px 10px}
+}
+
+/* ── Footer ── */
+.site-foot{margin-top:40px;text-align:center;font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:.12em;color:var(--text-faint);line-height:1.8}
+
+/* ══════════════════════════════════════════════════════════════
+   MOBILE  (≤ 640 px)
+   Main problems fixed:
+   · dim-text had 42 px side padding — killed readable line width
+   · dim-caption / diagram-legend were 10–11 px — too small
+   · page had 32 px side padding — canvases near-overflowed on 320 px screens
+   · summary table prop column used white-space:nowrap — overflowed
+   ══════════════════════════════════════════════════════════════ */
+@media (max-width: 640px) {
+  /* Boost text contrast — mobile screens and viewing angles make
+     low-opacity text harder to read than on a desktop monitor. */
+  :root {
+    --text:       rgba(255,255,255,1.0);
+    --text-muted: rgba(255,255,255,0.88);
+    --text-faint: rgba(255,255,255,0.68);
+  }
+
+  .page { padding: 56px 14px 72px }
+
+  /* Hero */
+  .hero { margin-bottom: 36px }
+  .hero-sub { font-size: 15px; margin-bottom: 28px }
+  .hero-panel { padding: 16px 14px 18px }
+  .hero-readouts { grid-template-columns: 1fr; gap: 10px }
+  .hero-stat .num { font-size: 17px }
+  .hero-stat .lbl { font-size: 11.5px }
+
+  /* Level toggle — full width, bigger tap targets */
+  .level-toggle { width: 100%; justify-content: center; margin-bottom: 22px }
+  .level-btn { flex: 1; padding: 10px 14px; font-size: 13.5px }
+
+  /* Section cards */
+  .dim-num { font-size: 54px }
+  .dim-visual { padding: 20px 14px; gap: 12px }
+  .dim-visual canvas { max-width: 100%; height: auto }
+  .dim-text { padding: 22px 18px; gap: 12px }
+
+  /* Prose */
+  .dim-heading { font-size: 18px; line-height: 1.22 }
+  .dim-body { font-size: 15px; line-height: 1.68; max-width: none }
+  .dim-caption { font-size: 13px; max-width: none; line-height: 1.58 }
+
+  /* Legend & slider labels */
+  .diagram-legend { font-size: 12px; gap: 10px }
+  .slider-row { font-size: 11.5px }
+
+  /* Readout panel */
+  .dim-readout { padding: 14px 14px }
+  .dim-readout .rl { font-size: 12px }
+  .dim-readout .rn { font-size: 22px }
+  .dim-readout .rf { font-size: 11.5px }
+  .dim-readout .extra { font-size: 12px }
+
+  /* Summary */
+  .summary-wrap { padding: 22px 16px 22px }
+  .summary-table { font-size: 12.5px }
+  .summary-table th, .summary-table td { padding: 10px 10px }
+  .summary-table td.prop { white-space: normal; font-size: 12.5px }
+}
+
+/* ══ Extra small phones (≤ 380 px) ═══════════════════════════ */
+@media (max-width: 380px) {
+  .page { padding: 52px 10px 64px }
+  .dim-visual { padding: 14px 10px }
+  .dim-text { padding: 18px 14px }
+  .hero-readouts { grid-template-columns: 1fr }
+}
+
+/* Simple mode: main canvases expand to fill the visual column.
+   align-self:stretch overrides the flex align-items:center so
+   the canvas can grow to 100% of the container width. */
+.page:not(.detail-mode) .dim-visual > canvas {
+  width: 100%;
+  align-self: stretch;
+}
+.page:not(.detail-mode) #shellCanvas   { aspect-ratio: 260/260; }
+.page:not(.detail-mode) #wordVecCanvas { aspect-ratio: 300/240; }
+.page:not(.detail-mode) #equatorCanvas { aspect-ratio: 280/200; }
+.page:not(.detail-mode) #nnCanvas      { aspect-ratio: 280/220; }
+.page:not(.detail-mode) #overlapCanvas { aspect-ratio: 260/260; }
+</style>
+</head>
+<body>
+
+<canvas id="stars"></canvas>
+
+<div class="topnav"><a class="back-link" href="/">← Physics</a></div>
+
+<div class="page">
+
+  <!-- ════════ SECTION 1 — HERO ════════ -->
+  <header class="hero">
+    <div class="site-label">Interactive Geometry · physics.connermccarthy.com</div>
+
+    <div class="level-toggle">
+      <button class="level-btn active" data-level="simple">Simple</button>
+      <button class="level-btn" data-level="detail">Detailed</button>
+    </div>
+
+    <h1 class="hero-title">The Dimension Tradeoff</h1>
+    <!-- Text injected from content.js → hero.simple / hero.detail -->
+    <p id="heroSubSimple" class="hero-sub simple-only"></p>
+    <p id="heroSubDetail" class="hero-sub detail-only"></p>
+
+    <div class="hero-panel">
+      <div class="hero-panel-label">Global dimension (illustrative) <span class="val" id="heroDimVal">3</span></div>
+      <input type="range" class="ds-slider" id="heroDimSlider" min="1" max="100" value="3" step="1">
+      <div class="hero-readouts">
+        <div class="hero-stat danger">
+          <div class="lbl">Volume left in the inner 90% radius<br>(10%-thick outer shell)</div>
+          <div class="num" id="heroShellStat">–</div>
+        </div>
+        <div class="hero-stat safe">
+          <div class="lbl">…at d = 3, for comparison</div>
+          <div class="num" id="heroShellRefStat">–</div>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- ════════ SECTION 2 — SHELL PARADOX ════════ -->
+  <section class="dim-section" id="sec-shell">
+    <div class="dim-num">02</div>
+    <div class="dim-visual">
+      <canvas id="shellCanvas" width="260" height="260"></canvas>
+      <div class="diagram-legend">
+        <span><i class="dot" style="background:rgba(255,140,66,0.7)"></i>shell (fixed by slider)</span>
+        <span><i class="dot" style="background:var(--blue)"></i>real core volume (shrinks with d)</span>
+      </div>
+      <canvas id="shellChart" class="detail-only" width="260" height="120"></canvas>
+      <p class="dim-caption detail-only"></p>
+    </div>
+    <div class="dim-text">
+      <div class="dim-tag"></div>
+      <h2 class="dim-heading"></h2>
+      <p class="dim-body simple-only"></p>
+      <p class="dim-body detail-only"></p>
+
+      <div class="dim-controls">
+        <div class="ctrl-block">
+          <div class="slider-row"><span>Dimension (d)</span><span class="val" id="shellDimVal">3</span></div>
+          <input type="range" class="ds-slider" id="shellDimSlider" min="1" max="200" value="3" step="1">
+        </div>
+        <div class="ctrl-block">
+          <div class="slider-row"><span>Shell thickness (% of radius)</span><span class="val" id="shellThickVal">10%</span></div>
+          <input type="range" class="ds-slider" id="shellThickSlider" min="1" max="50" value="10" step="1">
+        </div>
+      </div>
+
+      <div class="dim-readout">
+        <div class="rl">Fraction of volume remaining in the untouched core</div>
+        <div class="rn" id="shellFracNum">–</div>
+        <div class="rf" id="shellFracFormula">interior_fraction = (1 − thickness)^d</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ════════ SECTION 3 — WORD VECTORS PREVIEW ════════ -->
+  <section class="dim-section" id="sec-wordvec">
+    <div class="dim-num">03</div>
+    <div class="dim-visual">
+      <canvas id="wordVecCanvas" width="600" height="480"></canvas>
+      <div class="diagram-legend">
+        <span><i class="dot" style="background:var(--blue)"></i>man / king</span>
+        <span><i class="dot" style="background:var(--orange)"></i>woman / queen</span>
+        <span><i class="dot" style="background:rgba(178,139,255,.9)"></i>predicted (king − man + woman)</span>
+      </div>
+      <p class="dim-caption detail-only"></p>
+    </div>
+    <div class="dim-text">
+      <div class="dim-tag"></div>
+      <h2 class="dim-heading"></h2>
+      <p class="dim-body simple-only"></p>
+      <p class="dim-body detail-only"></p>
+
+      <div class="dim-controls">
+        <div class="ctrl-block">
+          <button class="wv-pair-btn" id="wvReplayBtn">↻ Replay animation</button>
+        </div>
+      </div>
+
+      <div class="dim-readout detail-only">
+        <div class="rl">Cosine similarity: predicted vector vs. actual "queen"</div>
+        <div class="rn" id="wvCosNum">–</div>
+        <div class="rf">cos(king − man + woman, queen)</div>
+        <div class="extra" id="wvResidual">Euclidean residual: –</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ════════ SECTION 4 — EQUATORIAL COLLAPSE ════════ -->
+  <section class="dim-section" id="sec-equator">
+    <div class="dim-num">04</div>
+    <div class="dim-visual">
+      <canvas id="equatorCanvas" width="280" height="200"></canvas>
+      <div class="diagram-legend">
+        <span><i class="dot" style="background:rgba(255,140,66,0.7)"></i>±θ° band around equator</span>
+        <span><i class="dot" style="background:rgba(255,255,255,0.4)"></i>equator / poles</span>
+      </div>
+      <canvas id="equatorChart" class="detail-only" width="280" height="120"></canvas>
+      <p class="dim-caption detail-only"></p>
+    </div>
+    <div class="dim-text">
+      <div class="dim-tag"></div>
+      <h2 class="dim-heading"></h2>
+      <p class="dim-body simple-only"></p>
+      <p class="dim-body detail-only"></p>
+
+      <div class="dim-controls">
+        <div class="ctrl-block">
+          <div class="slider-row"><span>Dimension (d)</span><span class="val" id="eqDimVal">3</span></div>
+          <input type="range" class="ds-slider" id="eqDimSlider" min="2" max="300" value="3" step="1">
+        </div>
+        <div class="ctrl-block">
+          <div class="slider-row"><span>Band half-width (degrees from equator)</span><span class="val" id="eqThetaVal">20°</span></div>
+          <input type="range" class="ds-slider" id="eqThetaSlider" min="5" max="45" value="20" step="1">
+        </div>
+      </div>
+
+      <div class="dim-readout">
+        <div class="rl">Fraction of surface area within the equatorial band</div>
+        <div class="rn" id="eqFracNum">–</div>
+        <div class="rf">computed by numerical integration of cos(φ)^(d−2) over the band, ÷ over the full sphere</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ════════ SECTION 5 — NEAREST-NEIGHBOR DISTANCE COLLAPSE ════════ -->
+  <section class="dim-section" id="sec-nn">
+    <div class="dim-num">05</div>
+    <div class="dim-visual">
+      <canvas id="nnCanvas" width="560" height="440"></canvas>
+      <div class="diagram-legend">
+        <span><i class="dot" style="background:rgba(178,139,255,.9)"></i>you (at center)</span>
+        <span><i class="dot" style="background:var(--blue)"></i>closest player (d‑dim)</span>
+        <span><i class="dot" style="background:var(--orange)"></i>farthest player (d‑dim)</span>
+      </div>
+      <canvas id="nnChart" class="detail-only" width="280" height="120"></canvas>
+      <p class="dim-caption detail-only"></p>
+    </div>
+    <div class="dim-text">
+      <div class="dim-tag"></div>
+      <h2 class="dim-heading"></h2>
+      <p class="dim-body simple-only"></p>
+      <p class="dim-body detail-only"></p>
+
+      <div class="dim-controls">
+        <!-- Simple mode: preset dimension buttons -->
+        <div class="simple-only" style="display:flex;flex-direction:column;gap:10px">
+          <div style="font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--text-faint);text-align:center">Dimensions</div>
+          <div class="ctrl-block" style="display:flex;gap:6px;flex-wrap:wrap;justify-content:center">
+            <button class="wv-pair-btn" style="flex:1;min-width:40px" data-dim="1">1</button>
+            <button class="wv-pair-btn" style="flex:1;min-width:40px" data-dim="2">2</button>
+            <button class="wv-pair-btn" style="flex:1;min-width:40px" data-dim="3">3</button>
+            <button class="wv-pair-btn" style="flex:1;min-width:40px" data-dim="10">10</button>
+            <button class="wv-pair-btn" style="flex:1;min-width:40px" data-dim="100">100</button>
+            <button class="wv-pair-btn" style="flex:1;min-width:40px" data-dim="300">300</button>
+          </div>
+        </div>
+        <!-- Detailed mode: slider for fine control -->
+        <div class="ctrl-block detail-only">
+          <div class="slider-row"><span>Dimension (d)</span><span class="val" id="nnDimVal">10</span></div>
+          <input type="range" class="ds-slider" id="nnDimSlider" min="1" max="300" value="10" step="1">
+        </div>
+        <div class="ctrl-block detail-only">
+          <div class="slider-row"><span>Number of points</span><span class="val" id="nnPtsVal">50</span></div>
+          <input type="range" class="ds-slider" id="nnPtsSlider" min="10" max="200" value="50" step="1">
+        </div>
+        <div class="ctrl-block detail-only">
+          <button class="wv-pair-btn" id="nnResampleBtn">↻ Resample points</button>
+        </div>
+      </div>
+
+      <div class="hero-readouts detail-only" style="margin-top:0">
+        <div class="hero-stat safe">
+          <div class="lbl">Shortest pass (real, d‑dim)</div>
+          <div class="num" id="nnNearNum">–</div>
+        </div>
+        <div class="hero-stat danger">
+          <div class="lbl">Longest pass (real, d‑dim)</div>
+          <div class="num" id="nnFarNum">–</div>
+        </div>
+      </div>
+
+      <div class="dim-readout detail-only">
+        <div class="rl">Shortest ÷ longest pass — when this → 1, every player is equally far away</div>
+        <div class="rn" id="nnRatioNum">–</div>
+        <div class="rf">N players on a d-dimensional field; you hold the ball, distances are real d-dim Euclidean</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ════════ SECTION 6 — VOLUME-OVERLAP PROBABILITY ════════ -->
+  <section class="dim-section" id="sec-overlap">
+    <div class="dim-num">06</div>
+    <div class="dim-visual">
+      <canvas id="overlapCanvas" width="260" height="260"></canvas>
+      <div class="diagram-legend">
+        <span><i class="dot" style="background:var(--blue)"></i>hit (inside target)</span>
+        <span><i class="dot" style="background:var(--orange)"></i>miss</span>
+      </div>
+      <p class="dim-caption detail-only"></p>
+    </div>
+    <div class="dim-text">
+      <div class="dim-tag"></div>
+      <h2 class="dim-heading"></h2>
+      <p class="dim-body simple-only"></p>
+      <p class="dim-body detail-only"></p>
+
+      <div class="dim-controls">
+        <div class="ctrl-block">
+          <div class="slider-row"><span>Dimension (d)</span><span class="val" id="ovDimVal">3</span></div>
+          <input type="range" class="ds-slider" id="ovDimSlider" min="1" max="100" value="3" step="1">
+        </div>
+        <div class="ctrl-block">
+          <div class="slider-row"><span>Ball radius (% of box half-width)</span><span class="val" id="ovRadVal">70%</span></div>
+          <input type="range" class="ds-slider" id="ovRadSlider" min="10" max="90" value="70" step="1">
+        </div>
+      </div>
+
+      <div class="dim-readout">
+        <div class="rl">Probability a random dart lands inside the target zone</div>
+        <div class="rn" id="ovProbNum">–</div>
+        <div class="rf">p = V_d(r) / 2^d  (exact d-dimensional ball volume formula)</div>
+        <div class="extra" id="ovTriesNum">Expected tries for one hit: –</div>
+        <div class="extra" id="ovMcNum">Live Monte Carlo: –</div>
+      </div>
+    </div>
+  </section>
+
+
+    <!-- ════════ SECTION 8 — SUMMARY TABLE ════════ -->
+  <section class="summary-wrap" id="sec-summary">
+    <div class="dim-num">08</div>
+    <div class="summary-tag"></div>
+    <h2 class="summary-heading"></h2>
+    <table class="summary-table">
+      <thead>
+        <tr>
+          <th>Property</th>
+          <th class="lo">Low dimension (2–3)</th>
+          <th class="hi">High dimension (100–1000+)</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td class="prop">Volume location</td>
+          <td>Spread throughout the ball</td>
+          <td>Concentrated in a thin outer shell</td>
+        </tr>
+        <tr>
+          <td class="prop">Sphere surface</td>
+          <td>Spread across all latitudes</td>
+          <td>Collapsed near one equator</td>
+        </tr>
+        <tr>
+          <td class="prop">Nearest vs. farthest neighbor</td>
+          <td>Very different distances</td>
+          <td>Nearly identical distances</td>
+        </tr>
+        <tr>
+          <td class="prop">Two random balls overlapping</td>
+          <td>Common</td>
+          <td>Vanishingly rare</td>
+        </tr>
+        <tr>
+          <td class="prop">Independent "directions" available</td>
+          <td>2–3 (exactly orthogonal)</td>
+          <td>Astronomically many (nearly orthogonal)</td>
+        </tr>
+        <tr>
+          <td class="prop">Good for…</td>
+          <td>Geometric intuition, physical space</td>
+          <td>Encoding many features with low interference</td>
+        </tr>
+        <tr>
+          <td class="prop">Bad for…</td>
+          <td>Representing many independent features</td>
+          <td>Distance-based search, nearest-neighbor lookup</td>
+        </tr>
+      </tbody>
+    </table>
+  </section>
+
+  <div class="site-foot">
+    All visualizations are 2D/3D stylized metaphors; the numbers shown are computed using the real
+    mathematics of n‑dimensional geometry.
+  </div>
+
+</div>
+
+<!-- All section text is managed in content.js — edit there, not in the HTML. -->
+<script src="content.js"></script>
+<script>
+/* ════════════════════════════════════════════════════════════════════
+   DESIGN DECISION (sliders): each section below uses its OWN independent
+   dimension slider, scoped to whatever range makes that section's math
+   legible (e.g. 1–200 here, later sections need 2–300 or a log-scale
+   2–1000). The hero's "Global dimension" slider does NOT drive these —
+   it's a small illustrative widget that gives an immediate, concrete
+   gut-punch number before the reader scrolls into the real sections.
+   This was simpler and more honest than forcing one shared range/scale
+   onto math that doesn't share a natural range.
+   ════════════════════════════════════════════════════════════════════ */
+
+// ── Inject prose from content.js ──────────────────────────────────────────
+// All section text lives in content.js. This block reads from window.DIM_CONTENT
+// and stamps it into the appropriate elements. Edit content.js to change any text.
+(function () {
+  const C = window.DIM_CONTENT;
+  if (!C) { console.warn('dimensions: content.js not loaded'); return; }
+
+  // Hero
+  const heroSimple = document.getElementById('heroSubSimple');
+  const heroDetail = document.getElementById('heroSubDetail');
+  if (heroSimple) heroSimple.innerHTML = C.hero.simple;
+  if (heroDetail) heroDetail.innerHTML = C.hero.detail;
+
+  // Sections
+  const injectSection = (sectionId, s) => {
+    const root = document.getElementById(sectionId);
+    if (!root || !s) return;
+    const q = sel => root.querySelector(sel);
+    if (s.tag)     { const e = q('.dim-tag, .summary-tag');           if (e) e.textContent = s.tag; }
+    if (s.heading) { const e = q('.dim-heading, .summary-heading');   if (e) e.innerHTML   = s.heading; }
+    if (s.simple)  { const e = q('.dim-body.simple-only');            if (e) e.innerHTML   = s.simple; }
+    if (s.detail)  { const e = q('.dim-body.detail-only');            if (e) e.innerHTML   = s.detail; }
+    if (s.caption) { const e = q('.dim-caption');                     if (e) e.innerHTML   = s.caption; }
+  };
+
+  injectSection('sec-shell',   C.sections.shell);
+  injectSection('sec-wordvec', C.sections.wordvec);
+  injectSection('sec-equator', C.sections.equator);
+  injectSection('sec-nn',      C.sections.nn);
+  injectSection('sec-overlap', C.sections.overlap);
+  injectSection('sec-summary', C.sections.summary);
+
+  // Footer
+  const foot = document.querySelector('.site-foot');
+  if (foot && C.footer) foot.textContent = C.footer.replace(/\s+/g, ' ').trim();
+})();
+
+// ── Simple/Detailed level toggle — swaps prose only, never the math or
+// the live visualizations (those are identical in both modes). ──
+document.querySelectorAll('.level-btn').forEach(btn => {
+  btn.addEventListener('click', function () {
+    document.querySelectorAll('.level-btn').forEach(b => b.classList.remove('active'));
+    this.classList.add('active');
+    document.querySelector('.page').classList.toggle('detail-mode', this.dataset.level === 'detail');
+  });
+});
+
+// ── Math utilities ─────────────────────────────────────────────────
+
+// Lanczos approximation to the Gamma function (g=7, n=9 coefficients —
+// the standard widely-published Lanczos coefficient set, e.g. as used
+// in Numerical Recipes). Good to ~15 significant digits for Re(z) > 0.
+const LANCZOS_G = 7;
+const LANCZOS_P = [
+  0.99999999999980993,
+  676.5203681218851,
+  -1259.1392167224028,
+  771.32342877765313,
+  -176.61502916214059,
+  12.507343278686905,
+  -0.13857109526572012,
+  9.9843695780195716e-6,
+  1.5056327351493116e-7
+];
+function gamma(z) {
+  if (z < 0.5) {
+    // reflection formula — not actually exercised by this page (all of
+    // our gamma() calls use z = d/2 + 1 >= 1.5), kept for completeness.
+    return Math.PI / (Math.sin(Math.PI * z) * gamma(1 - z));
+  }
+  z -= 1;
+  let x = LANCZOS_P[0];
+  for (let i = 1; i < LANCZOS_G + 2; i++) x += LANCZOS_P[i] / (z + i);
+  const t = z + LANCZOS_G + 0.5;
+  return Math.sqrt(2 * Math.PI) * Math.pow(t, z + 0.5) * Math.exp(-t) * x;
+}
+
+// Volume of a d-dimensional ball of radius r:
+//   V_d(r) = (pi^(d/2) / Gamma(d/2 + 1)) * r^d
+// Sanity checks (see console on load): d=2 -> pi*r^2, d=3 -> (4/3)*pi*r^3.
+function ballVolume(d, r) {
+  return (Math.pow(Math.PI, d / 2) / gamma(d / 2 + 1)) * Math.pow(r, d);
+}
+
+// Shell-paradox interior fraction: fraction of a d-ball's volume that
+// lies within radius (1 - thickness)*R of the center, i.e. NOT in the
+// outer "thickness"-fraction shell. Because volume scales as r^d, this
+// is simply (1 - thickness)^d — it doesn't even need ballVolume().
+function shellInteriorFraction(d, thickness) {
+  return Math.pow(1 - thickness, d);
+}
+
+// Equatorial-band surface-area fraction for S^(d-1) (the unit sphere in
+// R^d), viewed via its latitude angle phi measured FROM the equator
+// (phi=0 at equator, phi=±90° at the poles). The surface-area density
+// at latitude phi is proportional to cos(phi)^(d-2) (this is the
+// standard "spherical coordinates Jacobian" result). The fraction of
+// area within ±thetaDeg of the equator is therefore the ratio of two
+// integrals of that density.
+//
+// The spec suggests a closed-form approximation
+// (sin(theta)^(d-1) * correction_term); we instead compute this exactly
+// via numerical integration (Simpson's rule), because it's just as
+// simple to implement correctly and avoids approximation error
+// entirely — verified against the known closed forms:
+//   d=2 (circle):  fraction = 2*theta/pi              (uniform density)
+//   d=3 (sphere):  fraction = sin(theta)               (classic zone result)
+// both match this function to ~1e-9 (see console on load).
+function equatorialFraction(d, thetaDeg, steps) {
+  steps = steps || 200;
+  const theta = thetaDeg * Math.PI / 180;
+  const exponent = d - 2;
+  function integrate(a, b) {
+    let sum = 0;
+    const h = (b - a) / steps;
+    for (let i = 0; i <= steps; i++) {
+      const x = a + i * h;
+      const w = (i === 0 || i === steps) ? 1 : (i % 2 === 0 ? 2 : 4);
+      sum += w * Math.pow(Math.cos(x), exponent);
+    }
+    return sum * h / 3;
+  }
+  return Math.min(1, integrate(-theta, theta) / integrate(-Math.PI / 2, Math.PI / 2));
+}
+
+// Nearest/farthest-neighbor distance collapse: a REAL simulation (not a
+// formula) — generate N random points uniform in [0,1]^d plus one fixed
+// reference point, compute Euclidean distance from the reference to
+// each of the N points, and return the min, max, and their ratio. As
+// d grows, min/max -> 1: every point becomes roughly equidistant from
+// the reference.
+function nnSimulation(d, N) {
+  const ref = new Array(d);
+  for (let i = 0; i < d; i++) ref[i] = Math.random();
+  let minDist = Infinity, maxDist = -Infinity;
+  for (let p = 0; p < N; p++) {
+    let sq = 0;
+    for (let i = 0; i < d; i++) {
+      const diff = Math.random() - ref[i];
+      sq += diff * diff;
+    }
+    const dist = Math.sqrt(sq);
+    if (dist < minDist) minDist = dist;
+    if (dist > maxDist) maxDist = dist;
+  }
+  return { minDist, maxDist, ratio: minDist / maxDist };
+}
+
+// Quick self-test of the math utilities against known closed forms.
+(function selfTest() {
+  const v2 = ballVolume(2, 1), v3 = ballVolume(3, 1);
+  console.assert(Math.abs(v2 - Math.PI) < 1e-9, 'ballVolume(2,1) should be pi', v2);
+  console.assert(Math.abs(v3 - (4 / 3) * Math.PI) < 1e-9, 'ballVolume(3,1) should be 4/3 pi', v3);
+  const e2 = equatorialFraction(2, 30, 400), e3 = equatorialFraction(3, 30, 400);
+  console.assert(Math.abs(e2 - 2 * (30 * Math.PI / 180) / Math.PI) < 1e-6, 'equatorialFraction(2,30) mismatch', e2);
+  console.assert(Math.abs(e3 - Math.sin(30 * Math.PI / 180)) < 1e-6, 'equatorialFraction(3,30) mismatch', e3);
+  const c2 = collisionProbability(2, 1), c3 = collisionProbability(3, 1);
+  console.assert(Math.abs(c2 - Math.PI / 4) < 1e-9, 'collisionProbability(2,1) should be pi/4', c2);
+  console.assert(Math.abs(c3 - Math.PI / 6) < 1e-9, 'collisionProbability(3,1) should be pi/6', c3);
+})();
+
+function fmtPct(x) {
+  if (x >= 0.01) return (x * 100).toFixed(2) + '%';
+  if (x >= 1e-6) return (x * 100).toExponential(2) + '%';
+  return '< 0.0001%';
+}
+
+// Formats large/huge numbers with commas below 1e6, scientific notation above.
+function fmtBigNumber(x) {
+  if (!isFinite(x)) return '∞';
+  if (x < 1000) return x.toFixed(1);
+  if (x < 1e6) return Math.round(x).toLocaleString();
+  return x.toExponential(2);
+}
+
+// Volume-overlap collision probability: a ball of radius r (as a
+// fraction of the box's half-width, so r=1 means the ball is exactly
+// inscribed, touching the box faces) sits inside a box of side 2
+// centered at the origin. The probability a uniform random point in
+// the box lands inside the ball is simply ballVolume / boxVolume.
+// Sanity check (d=2): inscribed circle in square -> pi/4 ≈ 78.5%,
+// the classic result; (d=3): inscribed sphere in cube -> pi/6 ≈ 52.4%.
+function boxVolume(d) { return Math.pow(2, d); }
+function collisionProbability(d, r) { return ballVolume(d, r) / boxVolume(d); }
+
+// Approximate count of "nearly orthogonal" unit vectors achievable in
+// R^d, where "nearly orthogonal" means pairwise |cos(angle)| <= eps for
+// eps = sin(toleranceDegrees) — i.e. the angle is within
+// toleranceDegrees of a true 90°.
+//
+// Derivation (simplified, NOT a tight theorem — see Kainen 1997,
+// "Quasiorthogonal dimension," for rigorous bounds):
+//   For two independent random unit vectors in R^d, their inner
+//   product cos(theta) behaves approximately like a mean-0 Gaussian
+//   with variance ~1/d (each coordinate contributes ~1/d, and there
+//   are d of them). So P(|cos(theta)| > eps) ~ 2*exp(-d*eps^2/2)
+//   (a standard Gaussian tail bound). A greedy/union-bound packing
+//   argument — keep adding vectors until the next random candidate is
+//   *likely* to violate the tolerance against some existing vector —
+//   gives an achievable count on the order of exp(d*eps^2/2).
+// This reproduces the qualitative (and roughly quantitative) shape of
+// the real result: the count grows exponentially in d, and faster for
+// looser tolerance. We floor it at d, since the standard basis always
+// gives d EXACTLY orthogonal vectors regardless of tolerance.
+function approxOrthogonalCount(d, toleranceDegrees) {
+  const eps = Math.sin(toleranceDegrees * Math.PI / 180);
+  return Math.max(d, Math.exp(0.5 * eps * eps * d));
+}
+
+// ── Starfield background (visual continuity with the rest of the site) ──
+(function () {
+  const cv = document.getElementById('stars');
+  const ctx = cv.getContext('2d');
+  let W, H, stars;
+  function resize() { W = cv.width = window.innerWidth; H = cv.height = window.innerHeight; }
+  function initStars() {
+    stars = Array.from({ length: 220 }, () => ({
+      x: Math.random() * W, y: Math.random() * H,
+      r: Math.random() * 1.1 + 0.2, o: Math.random() * 0.5 + 0.1,
+      speed: Math.random() * 0.4 + 0.1, phase: Math.random() * Math.PI * 2
+    }));
+  }
+  let t = 0;
+  function draw() {
+    ctx.clearRect(0, 0, W, H);
+    t += 0.006;
+    for (const s of stars) {
+      const o = s.o * (0.7 + 0.3 * Math.sin(t * s.speed + s.phase));
+      ctx.fillStyle = `rgba(255,255,255,${o})`;
+      ctx.beginPath(); ctx.arc(s.x, s.y, s.r, 0, Math.PI * 2); ctx.fill();
+    }
+    requestAnimationFrame(draw);
+  }
+  resize(); initStars(); draw();
+  window.addEventListener('resize', () => { resize(); initStars(); });
+})();
+
+// ── Hero illustrative widget ──
+(function () {
+  const slider = document.getElementById('heroDimSlider');
+  const dimVal = document.getElementById('heroDimVal');
+  const shellStat = document.getElementById('heroShellStat');
+  const refStat = document.getElementById('heroShellRefStat');
+  const THICKNESS = 0.10;
+
+  function update() {
+    const d = parseInt(slider.value, 10);
+    dimVal.textContent = d;
+    shellStat.textContent = fmtPct(shellInteriorFraction(d, THICKNESS));
+    refStat.textContent = fmtPct(shellInteriorFraction(3, THICKNESS));
+  }
+  slider.addEventListener('input', update);
+  update();
+})();
+
+// ── Section 2: Shell paradox ──
+(function () {
+  const dimSlider = document.getElementById('shellDimSlider');
+  const thickSlider = document.getElementById('shellThickSlider');
+  const dimVal = document.getElementById('shellDimVal');
+  const thickVal = document.getElementById('shellThickVal');
+  const fracNum = document.getElementById('shellFracNum');
+
+  const cv = document.getElementById('shellCanvas');
+  const ctx = cv.getContext('2d');
+  const W = cv.width, H = cv.height;
+  const cx = W / 2, cy = H / 2;
+  const R = 96; // fixed drawn radius — the metaphor that deliberately never changes
+
+  const chartCv = document.getElementById('shellChart');
+  const chartCtx = chartCv.getContext('2d');
+  const CW = chartCv.width, CH = chartCv.height;
+
+  let dimension = 3;
+  let thickness = 0.10;
+  let dispBoundaryR = R * (1 - thickness); // animated/lerped for smooth slider drag
+  let dispCoreR = R * Math.sqrt(shellInteriorFraction(dimension, thickness));
+  let t = 0;
+
+  function readUI() {
+    dimension = parseInt(dimSlider.value, 10);
+    thickness = parseInt(thickSlider.value, 10) / 100;
+    dimVal.textContent = dimension;
+    thickVal.textContent = Math.round(thickness * 100) + '%';
+    fracNum.textContent = fmtPct(shellInteriorFraction(dimension, thickness));
+  }
+  dimSlider.addEventListener('input', readUI);
+  thickSlider.addEventListener('input', readUI);
+  readUI();
+
+  function drawMainCanvas() {
+    ctx.clearRect(0, 0, W, H);
+
+    // Outer reference circle — the "drawn ball," fixed size always.
+    ctx.strokeStyle = 'rgba(255,255,255,0.22)';
+    ctx.lineWidth = 1.5;
+    ctx.beginPath(); ctx.arc(cx, cy, R, 0, Math.PI * 2); ctx.stroke();
+
+    // Outer shell ring — position depends ONLY on the thickness slider,
+    // never on dimension. This is the part of the picture that's a
+    // pure metaphor and stays put regardless of how scary the real
+    // number gets.
+    const targetBoundaryR = R * (1 - thickness);
+    dispBoundaryR += (targetBoundaryR - dispBoundaryR) * 0.12;
+    ctx.beginPath();
+    ctx.arc(cx, cy, R, 0, Math.PI * 2);
+    ctx.arc(cx, cy, dispBoundaryR, 0, Math.PI * 2, true);
+    ctx.fillStyle = 'rgba(255,140,66,0.22)';
+    ctx.fill('evenodd');
+    ctx.strokeStyle = 'rgba(255,140,66,0.45)';
+    ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.arc(cx, cy, dispBoundaryR, 0, Math.PI * 2); ctx.stroke();
+
+    // Real, animated "core" — radius scaled by sqrt(interior_fraction)
+    // so that the drawn AREA fraction (which is what the eye reads in
+    // 2D) matches the real d-dimensional volume fraction. This is the
+    // one element that's allowed to shrink toward a point as d grows.
+    const interiorFraction = shellInteriorFraction(dimension, thickness);
+    const targetCoreR = R * Math.sqrt(Math.max(interiorFraction, 0));
+    dispCoreR += (targetCoreR - dispCoreR) * 0.12;
+    const glow = 0.55 + 0.12 * Math.sin(t * 2.2);
+    ctx.beginPath();
+    ctx.arc(cx, cy, Math.max(dispCoreR, 1.4), 0, Math.PI * 2);
+    ctx.fillStyle = `rgba(93,170,255,${glow})`;
+    ctx.fill();
+    ctx.strokeStyle = 'rgba(93,170,255,0.9)';
+    ctx.lineWidth = 1.3;
+    ctx.stroke();
+  }
+
+  function drawChart() {
+    chartCtx.clearRect(0, 0, CW, CH);
+    const padL = 26, padR = 6, padT = 6, padB = 14;
+    const plotW = CW - padL - padR, plotH = CH - padT - padB;
+    const yMin = 1e-6; // log floor for display
+
+    function xAt(d) { return padL + (d - 1) / (200 - 1) * plotW; }
+    function yAt(frac) {
+      const clamped = Math.max(frac, yMin);
+      const logT = Math.log10(clamped) / Math.log10(yMin); // 0 at frac=1, 1 at frac=yMin
+      return padT + logT * plotH;
+    }
+
+    // Gridlines at 10^0, 10^-2, 10^-4, 10^-6
+    chartCtx.strokeStyle = 'rgba(255,255,255,0.06)';
+    chartCtx.font = '8px JetBrains Mono, monospace';
+    chartCtx.fillStyle = 'rgba(255,255,255,0.22)';
+    chartCtx.textAlign = 'right';
+    [0, -2, -4, -6].forEach(exp => {
+      const y = yAt(Math.pow(10, exp));
+      chartCtx.beginPath(); chartCtx.moveTo(padL, y); chartCtx.lineTo(CW - padR, y); chartCtx.stroke();
+      chartCtx.fillText('1e' + exp, padL - 4, y + 3);
+    });
+
+    // Curve
+    chartCtx.beginPath();
+    for (let d = 1; d <= 200; d++) {
+      const frac = shellInteriorFraction(d, thickness);
+      const x = xAt(d), y = yAt(frac);
+      if (d === 1) chartCtx.moveTo(x, y); else chartCtx.lineTo(x, y);
+    }
+    chartCtx.strokeStyle = 'rgba(255,140,66,0.85)';
+    chartCtx.lineWidth = 1.6;
+    chartCtx.stroke();
+
+    // Current dimension marker
+    const mx = xAt(dimension), my = yAt(shellInteriorFraction(dimension, thickness));
+    chartCtx.strokeStyle = 'rgba(255,255,255,0.25)';
+    chartCtx.lineWidth = 1;
+    chartCtx.beginPath(); chartCtx.moveTo(mx, padT); chartCtx.lineTo(mx, CH - padB); chartCtx.stroke();
+    chartCtx.beginPath(); chartCtx.arc(mx, my, 3, 0, Math.PI * 2);
+    chartCtx.fillStyle = '#fff'; chartCtx.fill();
+
+    chartCtx.textAlign = 'center';
+    chartCtx.fillStyle = 'rgba(255,255,255,0.32)';
+    chartCtx.fillText('dimension →', CW / 2, CH - 3);
+
+    // Rotated y-axis label
+    chartCtx.save();
+    chartCtx.translate(7, CH / 2);
+    chartCtx.rotate(-Math.PI / 2);
+    chartCtx.font = '8px JetBrains Mono, monospace';
+    chartCtx.fillStyle = 'rgba(255,255,255,0.22)';
+    chartCtx.textAlign = 'center';
+    chartCtx.fillText('core fraction (log)', 0, 0);
+    chartCtx.restore();
+  }
+
+  function loop() {
+    t += 1 / 60;
+    drawMainCanvas();
+    drawChart();
+    requestAnimationFrame(loop);
+  }
+  loop();
+})();
+
+// ── Section 3: Word vectors preview (king - man + woman ≈ queen) ──
+// Simplified to exactly 4 points (man, woman, king, queen) — earlier
+// drafts included extra analogy pairs and decorative context words,
+// but that made the diagram noisy. Fewer points, bigger dots, more
+// breathing room.
+(function () {
+  // Hand-placed TOY 2D coordinates — not real trained embeddings. Real
+  // word2vec/GloVe-style vectors live in 100-300+ dims (modern LLM
+  // embeddings: 768-4096) and can't be drawn directly. Small deliberate
+  // noise is baked in so the analogy is approximate, not exact — the
+  // way it really behaves in trained embedding spaces.
+  // Axes: x = informal "status/royalty" axis, y = "gender" axis.
+  const man = { x: 0.10, y: -0.95 };
+  const woman = { x: -0.05, y: 1.05 };
+  const king = { x: 2.90, y: -1.10 };
+  const queen = { x: 2.45, y: 1.54 };
+
+  function cosSim2(u, v) {
+    const dot = u.x * v.x + u.y * v.y;
+    const mu = Math.hypot(u.x, u.y), mv = Math.hypot(v.x, v.y);
+    return dot / (mu * mv);
+  }
+
+  const cv = document.getElementById('wordVecCanvas');
+  const ctx = cv.getContext('2d');
+  const W = cv.width, H = cv.height;
+  // LW/LH = logical drawing dimensions inside ctx.scale(2,2).
+  // Canvas attribute is 600×480; after scale(2,2) the drawing space is 300×240.
+  const LW = W / 2, LH = H / 2;
+  const scale = 58, originX = 67, originY = 143;
+  function proj(p) { return [originX + p.x * scale, originY - p.y * scale]; }
+
+  const cosNum = document.getElementById('wvCosNum');
+  const residualEl = document.getElementById('wvResidual');
+  const replayBtn = document.getElementById('wvReplayBtn');
+
+  // animT runs 0→3: each unit = one phase (~1.4 sec at 0.012/frame)
+  // Phase 1 (0→1): arrow king → (king−man), labeled "−man"
+  // Phase 2 (1→2): arrow (king−man) → predicted, labeled "+woman"
+  // Phase 3 (2→3): residual to actual queen fades in
+  // These arrows share a tip-to-tail connection at the intermediate
+  // point "king−man", making the arithmetic chain visually explicit.
+  // Start slightly negative so the 4 word points are visible for ~0.5s
+  // before phase 1 begins — gives the reader time to orient.
+  let animT = -0.36;
+
+  // Intermediate "king−man" point (position in embedding space)
+  const kMinusMan = { x: king.x - man.x, y: king.y - man.y };
+  const predicted  = { x: kMinusMan.x + woman.x, y: kMinusMan.y + woman.y };
+
+  const cos = cosSim2(predicted, queen);
+  const residual = Math.hypot(predicted.x - queen.x, predicted.y - queen.y);
+  cosNum.textContent = (cos * 100).toFixed(1) + '%';
+  residualEl.textContent = 'Euclidean residual: ' + residual.toFixed(2) + ' (toy units)';
+
+  replayBtn.addEventListener('click', () => { animT = -0.36; }); // replays with the same pause
+
+  function ease(t) { return t * t * (3 - 2 * t); } // smoothstep
+
+  function arrow(x1, y1, x2, y2, color, lw) {
+    const dx = x2 - x1, dy = y2 - y1, len = Math.hypot(dx, dy);
+    if (len < 2) return;
+    const ux = dx / len, uy = dy / len, hL = 9, hW = 5;
+    ctx.strokeStyle = color; ctx.fillStyle = color; ctx.lineWidth = lw;
+    ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x2 - ux * hL, y2 - uy * hL); ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(x2, y2);
+    ctx.lineTo(x2 - ux * hL - uy * hW, y2 - uy * hL + ux * hW);
+    ctx.lineTo(x2 - ux * hL + uy * hW, y2 - uy * hL - ux * hW);
+    ctx.fill();
+  }
+
+  function point(px, py, color, label, big) {
+    ctx.beginPath();
+    ctx.arc(px, py, big ? 5.5 : 4.5, 0, Math.PI * 2);
+    ctx.fillStyle = color; ctx.fill();
+    ctx.font = 'bold 11px DM Sans, sans-serif';
+    ctx.fillStyle = '#fff'; ctx.textAlign = 'left';
+    ctx.fillText(label, px + 9, py + 4);
+  }
+
+  function draw() {
+    ctx.clearRect(0, 0, W, H);
+    // Canvas is 600×480 attribute but all drawing code uses 300×240 coords.
+    // ctx.scale(2,2) renders at 2× pixel density; CSS then displays it at
+    // the same visual size as before — sharp instead of blurry.
+    ctx.save();
+    ctx.scale(2, 2);
+    animT = Math.min(3, animT + 0.012);
+
+    const p1 = ease(Math.max(0, Math.min(1, animT))); // clamped so negative delay doesn't bleed into phase
+    const p2 = ease(Math.max(0, Math.min(1, animT - 1)));
+    const p3 = Math.max(0, Math.min(1, animT - 2));
+
+    // Pixel positions
+    const [manX, manY]     = proj(man);
+    const [womanX, womanY] = proj(woman);
+    const [kingX, kingY]   = proj(king);
+    const [queenX, queenY] = proj(queen);
+    // key intermediate: king − man (as a position vector, shown as a floating point)
+    const kmX = originX + kMinusMan.x * scale, kmY = originY - kMinusMan.y * scale;
+    // prediction = king − man + woman
+    const predX = originX + predicted.x * scale, predY = originY - predicted.y * scale;
+
+    // ── Faint axes ────────────────────────────────────────────────────
+    ctx.strokeStyle = 'rgba(255,255,255,0.07)'; ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.moveTo(0, originY); ctx.lineTo(LW, originY); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(originX, 0); ctx.lineTo(originX, LH); ctx.stroke();
+    ctx.font = '9px JetBrains Mono, monospace';
+    ctx.fillStyle = 'rgba(255,255,255,0.22)';
+    ctx.textAlign = 'left';
+    ctx.fillText('status/royalty →', 4, originY - 7);   // left side of axis
+    ctx.fillText('♀ feminine', originX + 6, 13);
+    ctx.fillText('♂ masculine', originX + 6, LH - 7);
+
+    // (reference arrow between man/woman removed per user request)
+
+    // ── Phase 1: king → (king − man), labeled "− man" ─────────────────
+    // "Subtracting man" removes the masculine component from king's
+    // position. Since man has a strongly negative y (masculine),
+    // −man points strongly upward — the arrow goes toward a more
+    // gender-neutral position.
+    if (p1 > 0.02) {
+      const tx = kingX + p1 * (kmX - kingX), ty = kingY + p1 * (kmY - kingY);
+      arrow(kingX, kingY, tx, ty, 'rgba(93,170,255,0.92)', 2.2);
+    }
+    if (p1 > 0.0) {
+      // "king" start-point label
+      ctx.globalAlpha = Math.min(1, p1 * 4);
+      ctx.font = '9.5px JetBrains Mono, monospace';
+      ctx.fillStyle = 'rgba(255,255,255,0.45)';
+      ctx.textAlign = 'center';
+      ctx.fillText('start: king', kingX, kingY + 20);
+      ctx.globalAlpha = 1;
+    }
+    // "−man" step label fades in once arrow is ~70% drawn
+    if (p1 > 0.65) {
+      ctx.globalAlpha = Math.min(1, (p1 - 0.65) / 0.35);
+      const midX = (kingX + kmX) / 2, midY = (kingY + kmY) / 2;
+      ctx.font = 'bold 11px DM Sans, sans-serif';
+      ctx.fillStyle = 'rgba(93,170,255,1)';
+      ctx.textAlign = 'left';
+      ctx.fillText('− man', midX + 10, midY);
+      ctx.globalAlpha = 1;
+    }
+    // Intermediate "king−man" hollow dot appears at end of phase 1
+    if (p1 > 0.85) {
+      ctx.globalAlpha = (p1 - 0.85) / 0.15;
+      ctx.beginPath(); ctx.arc(kmX, kmY, 4.5, 0, Math.PI * 2);
+      ctx.strokeStyle = 'rgba(255,255,255,0.7)'; ctx.lineWidth = 1.5; ctx.stroke();
+      ctx.font = '9.5px JetBrains Mono, monospace';
+      ctx.fillStyle = 'rgba(255,255,255,0.55)';
+      ctx.textAlign = 'right';
+      ctx.fillText('ruler', kmX - 8, kmY - 7);
+      ctx.globalAlpha = 1;
+    }
+
+    // ── Phase 2: (king − man) → predicted, labeled "+ woman" ──────────
+    // "Adding woman" adds the feminine position vector. Woman has a
+    // strongly positive y, so this arrow also points upward, continuing
+    // the chain and landing near queen.
+    if (p2 > 0.02) {
+      const tx = kmX + p2 * (predX - kmX), ty = kmY + p2 * (predY - kmY);
+      arrow(kmX, kmY, tx, ty, 'rgba(255,140,66,0.92)', 2.2);
+    }
+    if (p2 > 0.65) {
+      ctx.globalAlpha = Math.min(1, (p2 - 0.65) / 0.35);
+      const midX = (kmX + predX) / 2, midY = (kmY + predY) / 2;
+      ctx.font = 'bold 11px DM Sans, sans-serif';
+      ctx.fillStyle = 'rgba(255,140,66,1)';
+      ctx.textAlign = 'left';
+      ctx.fillText('+ woman', midX + 10, midY);
+      ctx.globalAlpha = 1;
+    }
+    // Predicted hollow ring
+    if (p2 > 0.85) {
+      ctx.globalAlpha = (p2 - 0.85) / 0.15;
+      ctx.beginPath(); ctx.arc(predX, predY, 5.5, 0, Math.PI * 2);
+      ctx.strokeStyle = 'rgba(178,139,255,0.9)'; ctx.lineWidth = 1.5; ctx.stroke();
+      ctx.globalAlpha = 1;
+    }
+
+    // ── Phase 3: residual gap to actual queen ─────────────────────────
+    if (p3 > 0) {
+      ctx.globalAlpha = p3;
+      ctx.setLineDash([3, 4]);
+      ctx.beginPath(); ctx.moveTo(predX, predY); ctx.lineTo(queenX, queenY);
+      ctx.strokeStyle = 'rgba(255,255,255,0.5)'; ctx.lineWidth = 1.2; ctx.stroke();
+      ctx.setLineDash([]);
+      // Result label between predicted and queen
+      ctx.font = 'bold 10px DM Sans, sans-serif';
+      ctx.fillStyle = 'rgba(255,255,255,0.8)';
+      ctx.textAlign = 'center';
+      ctx.fillText('≈ queen ✓', (predX + queenX) / 2 + 36, (predY + queenY) / 2);
+      ctx.globalAlpha = 1;
+    }
+
+    // ── Backdrop word points — always visible ─────────────────────────
+    point(manX,   manY,   'rgba(93,170,255,0.7)',  'man');
+    point(womanX, womanY, 'rgba(255,140,66,0.7)',  'woman');
+    point(kingX,  kingY,  'rgba(93,170,255,0.95)', 'king', true);
+    point(queenX, queenY, 'rgba(255,140,66,0.95)', 'queen', true);
+
+    ctx.restore(); // undo the 2× scale before next frame
+    requestAnimationFrame(draw);
+  }
+  draw();
+})();
+
+// ── Section 4: Equatorial collapse ──
+(function () {
+  const dimSlider = document.getElementById('eqDimSlider');
+  const thetaSlider = document.getElementById('eqThetaSlider');
+  const dimVal = document.getElementById('eqDimVal');
+  const thetaVal = document.getElementById('eqThetaVal');
+  const fracNum = document.getElementById('eqFracNum');
+
+  const cv = document.getElementById('equatorCanvas');
+  const ctx = cv.getContext('2d');
+  const W = cv.width, H = cv.height;
+  const cx = W / 2, cy = H / 2;
+  const rx = 110; // horizontal radius — fixed, never changes
+  const baseRy = 84; // vertical radius at d=2 (least-squashed reference)
+
+  const chartCv = document.getElementById('equatorChart');
+  const chartCtx = chartCv.getContext('2d');
+  const CW = chartCv.width, CH = chartCv.height;
+
+  let dimension = 3, thetaDeg = 20;
+  let dispRy = baseRy;
+  let t = 0;
+
+  function readUI() {
+    dimension = parseInt(dimSlider.value, 10);
+    thetaDeg = parseInt(thetaSlider.value, 10);
+    dimVal.textContent = dimension;
+    thetaVal.textContent = thetaDeg + '°';
+    fracNum.textContent = (equatorialFraction(dimension, thetaDeg, 300) * 100).toFixed(2) + '%';
+  }
+  dimSlider.addEventListener('input', readUI);
+  thetaSlider.addEventListener('input', readUI);
+  readUI();
+
+  // Stylized visual-only compression curve — NOT the real computed
+  // fraction (that's shown separately below). Purely meant to suggest
+  // "the sphere flattens" as you raise d, clamped so it never fully
+  // vanishes on screen.
+  function visualCompressionFactor(d) {
+    return Math.max(0.1, 1 / (1 + 0.045 * (d - 2)));
+  }
+
+  function drawMain() {
+    ctx.clearRect(0, 0, W, H);
+    const targetRy = baseRy * visualCompressionFactor(dimension);
+    dispRy += (targetRy - dispRy) * 0.1;
+
+    // Equatorial band, clipped to the ellipse
+    const bandHalfPx = dispRy * Math.sin(thetaDeg * Math.PI / 180);
+    ctx.save();
+    ctx.beginPath();
+    ctx.ellipse(cx, cy, rx, dispRy, 0, 0, Math.PI * 2);
+    ctx.clip();
+    ctx.fillStyle = 'rgba(255,140,66,0.28)';
+    ctx.fillRect(cx - rx, cy - bandHalfPx, rx * 2, bandHalfPx * 2);
+    ctx.restore();
+
+    // Ellipse outline
+    ctx.beginPath();
+    ctx.ellipse(cx, cy, rx, dispRy, 0, 0, Math.PI * 2);
+    ctx.strokeStyle = 'rgba(255,255,255,0.3)';
+    ctx.lineWidth = 1.5;
+    ctx.stroke();
+
+    // Dashed equator line — labeled in the HTML legend below, not on canvas
+    ctx.strokeStyle = 'rgba(255,255,255,0.22)';
+    ctx.lineWidth = 1;
+    ctx.setLineDash([4, 4]);
+    ctx.beginPath(); ctx.moveTo(cx - rx, cy); ctx.lineTo(cx + rx, cy); ctx.stroke();
+    ctx.setLineDash([]);
+    // Small pole tick marks
+    ctx.strokeStyle = 'rgba(255,255,255,0.2)';
+    ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.moveTo(cx - 4, cy - dispRy); ctx.lineTo(cx + 4, cy - dispRy); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(cx - 4, cy + dispRy); ctx.lineTo(cx + 4, cy + dispRy); ctx.stroke();
+  }
+
+  function drawChart() {
+    chartCtx.clearRect(0, 0, CW, CH);
+    const padL = 30, padR = 6, padT = 6, padB = 14;
+    const plotW = CW - padL - padR, plotH = CH - padT - padB;
+    const dMin = 2, dMax = 300;
+
+    function xAt(d) { return padL + (d - dMin) / (dMax - dMin) * plotW; }
+    function yAt(frac) { return padT + (1 - frac) * plotH; } // linear 0..1
+
+    // Gridlines at 0, 0.5, 1.0
+    chartCtx.strokeStyle = 'rgba(255,255,255,0.06)';
+    chartCtx.font = '8px JetBrains Mono, monospace';
+    chartCtx.fillStyle = 'rgba(255,255,255,0.22)';
+    chartCtx.textAlign = 'right';
+    [0, 0.5, 1].forEach(v => {
+      const y = yAt(v);
+      chartCtx.beginPath(); chartCtx.moveTo(padL, y); chartCtx.lineTo(CW - padR, y); chartCtx.stroke();
+      chartCtx.fillText(v.toFixed(1), padL - 4, y + 3);
+    });
+
+    // Curve — sampled every few dimensions for speed (chart, not the readout)
+    chartCtx.beginPath();
+    let first = true;
+    for (let d = dMin; d <= dMax; d += 3) {
+      const frac = equatorialFraction(d, thetaDeg, 40);
+      const x = xAt(d), y = yAt(frac);
+      if (first) { chartCtx.moveTo(x, y); first = false; } else chartCtx.lineTo(x, y);
+    }
+    chartCtx.strokeStyle = 'rgba(255,140,66,0.85)';
+    chartCtx.lineWidth = 1.6;
+    chartCtx.stroke();
+
+    // Current dimension marker
+    const mx = xAt(dimension), my = yAt(equatorialFraction(dimension, thetaDeg, 200));
+    chartCtx.strokeStyle = 'rgba(255,255,255,0.25)';
+    chartCtx.lineWidth = 1;
+    chartCtx.beginPath(); chartCtx.moveTo(mx, padT); chartCtx.lineTo(mx, CH - padB); chartCtx.stroke();
+    chartCtx.beginPath(); chartCtx.arc(mx, my, 3, 0, Math.PI * 2);
+    chartCtx.fillStyle = '#fff'; chartCtx.fill();
+
+    chartCtx.textAlign = 'center';
+    chartCtx.fillStyle = 'rgba(255,255,255,0.32)';
+    chartCtx.fillText('dimension →', CW / 2, CH - 3);
+
+    chartCtx.save();
+    chartCtx.translate(7, CH / 2);
+    chartCtx.rotate(-Math.PI / 2);
+    chartCtx.font = '8px JetBrains Mono, monospace';
+    chartCtx.fillStyle = 'rgba(255,255,255,0.22)';
+    chartCtx.textAlign = 'center';
+    chartCtx.fillText('equatorial fraction', 0, 0);
+    chartCtx.restore();
+  }
+
+  function loop() {
+    t += 1 / 60;
+    drawMain();
+    drawChart();
+    requestAnimationFrame(loop);
+  }
+  loop();
+})();
+
+// ── Section 5: Nearest-neighbor distance collapse ──
+(function () {
+  const dimSlider = document.getElementById('nnDimSlider');
+  const ptsSlider = document.getElementById('nnPtsSlider');
+  const resampleBtn = document.getElementById('nnResampleBtn');
+  const dimVal = document.getElementById('nnDimVal');
+  const ptsVal = document.getElementById('nnPtsVal');
+  const nearNum = document.getElementById('nnNearNum');
+  const farNum = document.getElementById('nnFarNum');
+  const ratioNum = document.getElementById('nnRatioNum');
+
+  const cv = document.getElementById('nnCanvas');
+  const ctx = cv.getContext('2d');
+  const W = cv.width, H = cv.height;
+  const cx = W / 2, cy = H / 2;
+
+  const chartCv = document.getElementById('nnChart');
+  const chartCtx = chartCv.getContext('2d');
+  const CW = chartCv.width, CH = chartCv.height;
+
+  let dimension = 10, numPoints = 50;
+  let lastSim = { minDist: 0, maxDist: 0, ratio: 0 };
+  let distances = []; // Full distance array for visualization
+  let chartData = []; // [{d, ratio}], recomputed only on points-slider RELEASE to avoid jank
+
+  // Fixed random point set (in 300 dimensions) — only changes on explicit resample.
+  // This way changing dimension doesn't re-randomize the diagram.
+  const MAX_DIM = 300;
+  let refPoint = new Array(MAX_DIM);
+  let pointSet = []; // N × MAX_DIM array of random coordinates
+
+  function generateRandomPoints() {
+    // Initialize reference point
+    for (let i = 0; i < MAX_DIM; i++) refPoint[i] = Math.random();
+    // Initialize point set
+    pointSet = [];
+    for (let p = 0; p < numPoints; p++) {
+      const pt = new Array(MAX_DIM);
+      for (let i = 0; i < MAX_DIM; i++) pt[i] = Math.random();
+      pointSet.push(pt);
+    }
+  }
+
+  function runLiveSim() {
+    // Calculate distances using only first `dimension` coordinates
+    // of the fixed point set.
+    let minDist = Infinity, maxDist = -Infinity;
+    distances = [];
+    for (const pt of pointSet) {
+      let sq = 0;
+      for (let i = 0; i < dimension; i++) {
+        const diff = pt[i] - refPoint[i];
+        sq += diff * diff;
+      }
+      const dist = Math.sqrt(sq);
+      distances.push(dist);
+      if (dist < minDist) minDist = dist;
+      if (dist > maxDist) maxDist = dist;
+    }
+    lastSim = { minDist, maxDist, ratio: minDist / maxDist };
+
+    nearNum.textContent = lastSim.minDist.toFixed(3);
+    farNum.textContent = lastSim.maxDist.toFixed(3);
+    ratioNum.textContent = lastSim.ratio.toFixed(4);
+  }
+
+  function recomputeChartCurve() {
+    chartData = [];
+    const trials = 4;
+    for (let d = 1; d <= 300; d += 6) {
+      let sum = 0;
+      for (let k = 0; k < trials; k++) sum += nnSimulation(d, numPoints).ratio;
+      chartData.push({ d, ratio: sum / trials });
+    }
+  }
+
+  // Dimension slider (detailed mode)
+  dimSlider.addEventListener('input', () => {
+    dimension = parseInt(dimSlider.value, 10);
+    dimVal.textContent = dimension;
+    runLiveSim();
+  });
+
+  // Dimension preset buttons (simple mode)
+  document.querySelectorAll('[data-dim]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      dimension = parseInt(btn.getAttribute('data-dim'), 10);
+      dimSlider.value = dimension;
+      dimVal.textContent = dimension;
+      // Update button visual state
+      document.querySelectorAll('[data-dim]').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      runLiveSim();
+    });
+  });
+
+  // Set initial button state
+  document.querySelector('[data-dim="10"]')?.classList.add('active');
+  ptsSlider.addEventListener('input', () => {
+    numPoints = parseInt(ptsSlider.value, 10);
+    ptsVal.textContent = numPoints;
+  });
+  // Heavy chart recompute deferred to slider release, per spec guidance
+  // ("compute on slider release to avoid jank").
+  ptsSlider.addEventListener('change', () => {
+    runLiveSim();
+    recomputeChartCurve();
+  });
+  resampleBtn.addEventListener('click', () => {
+    generateRandomPoints();
+    runLiveSim();
+  });
+
+  // Initialize with random point set
+  generateRandomPoints();
+  runLiveSim();
+  recomputeChartCurve();
+
+  function drawMain() {
+    ctx.clearRect(0, 0, W, H);
+
+    // Canvas attribute is 560×440; drawing space is 280×220 (after scale).
+    ctx.save();
+    ctx.scale(2, 2);
+    const LW = W / 2, LH = H / 2;
+    const lcx = LW / 2, lcy = LH / 2;
+
+    // ── Dimension-specific visualizations ────────────────────────────────
+    if (dimension === 1) {
+      drawDim1(LW, LH, lcx, lcy);
+    } else if (dimension === 2) {
+      drawDim2(LW, LH, lcx, lcy);
+    } else {
+      drawDim3Plus(LW, LH, lcx, lcy);
+    }
+
+    ctx.restore();
+  }
+
+  function drawDim1(LW, LH, lcx, lcy) {
+    // 1D: horizontal line, points spread along it by distance
+    ctx.fillStyle = 'rgba(30,60,40,0.15)';
+    ctx.fillRect(0, 0, LW, LH);
+
+    const lineY = lcy;
+    const lineW = LW * 0.7;
+    const lineX0 = lcx - lineW / 2;
+
+    // Faint line
+    ctx.strokeStyle = 'rgba(255,255,255,0.12)';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(lineX0, lineY);
+    ctx.lineTo(lineX0 + lineW, lineY);
+    ctx.stroke();
+
+    // Points along the line by distance
+    let nearIdx = 0, farIdx = 0;
+    let minD = Infinity, maxD = -Infinity;
+    for (let i = 0; i < distances.length; i++) {
+      if (distances[i] < minD) { minD = distances[i]; nearIdx = i; }
+      if (distances[i] > maxD) { maxD = distances[i]; farIdx = i; }
+    }
+
+    const dRange = maxD - minD || 1;
+    for (let i = 0; i < distances.length; i++) {
+      const frac = (distances[i] - minD) / dRange;
+      const px = lineX0 + frac * lineW;
+      ctx.beginPath();
+      ctx.arc(px, lineY, 2.5, 0, Math.PI * 2);
+      ctx.fillStyle = i === nearIdx ? 'rgba(93,170,255,0.8)' : i === farIdx ? 'rgba(255,140,66,0.7)' : 'rgba(255,255,255,0.25)';
+      ctx.fill();
+    }
+
+    // Labels
+    ctx.font = 'bold 9px DM Sans, sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillStyle = 'rgba(255,255,255,0.5)';
+    ctx.fillText('min distance', lineX0, lineY - 8);
+    ctx.fillText('max distance', lineX0 + lineW, lineY - 8);
+
+    // Center point
+    ctx.beginPath();
+    ctx.arc(lcx, lcy, 5, 0, Math.PI * 2);
+    ctx.fillStyle = 'rgba(178,139,255,0.9)';
+    ctx.fill();
+    ctx.strokeStyle = 'rgba(255,255,255,0.8)';
+    ctx.lineWidth = 1;
+    ctx.stroke();
+  }
+
+  function drawDim2(LW, LH, lcx, lcy) {
+    // 2D: radial view (original diagram)
+    ctx.fillStyle = 'rgba(30,60,40,0.15)';
+    ctx.fillRect(0, 0, LW, LH);
+
+    const maxCanvasR = Math.min(lcx, lcy) - 12;
+    const rScale = maxCanvasR / (lastSim.maxDist * 1.2);
+
+    ctx.strokeStyle = 'rgba(255,255,255,0.08)';
+    ctx.lineWidth = 1;
+    for (let r = lastSim.minDist * 0.5; r <= lastSim.maxDist; r += (lastSim.maxDist - lastSim.minDist) / 4) {
+      ctx.beginPath();
+      ctx.arc(lcx, lcy, r * rScale, 0, Math.PI * 2);
+      ctx.stroke();
+    }
+
+    let nearIdx = 0, farIdx = 0;
+    let minDist = Infinity, maxDist = -Infinity;
+    for (let i = 0; i < distances.length; i++) {
+      if (distances[i] < minDist) { minDist = distances[i]; nearIdx = i; }
+      if (distances[i] > maxDist) { maxDist = distances[i]; farIdx = i; }
+    }
+
+    for (let i = 0; i < distances.length; i++) {
+      const angle = (2 * Math.PI * i) / distances.length;
+      const r = distances[i] * rScale;
+      const px = lcx + r * Math.cos(angle);
+      const py = lcy + r * Math.sin(angle);
+      ctx.beginPath();
+      ctx.arc(px, py, 3.2, 0, Math.PI * 2);
+      ctx.fillStyle = 'rgba(255,255,255,0.3)';
+      ctx.fill();
+    }
+
+    if (nearIdx >= 0) {
+      const angle = (2 * Math.PI * nearIdx) / distances.length;
+      const r = distances[nearIdx] * rScale;
+      const px = lcx + r * Math.cos(angle);
+      const py = lcy + r * Math.sin(angle);
+      ctx.beginPath();
+      ctx.moveTo(lcx, lcy);
+      ctx.lineTo(px, py);
+      ctx.strokeStyle = 'rgba(93,170,255,0.8)';
+      ctx.lineWidth = 2;
+      ctx.setLineDash([5, 3]);
+      ctx.stroke();
+      ctx.setLineDash([]);
+      ctx.beginPath();
+      ctx.arc(px, py, 4.5, 0, Math.PI * 2);
+      ctx.fillStyle = 'rgba(93,170,255,0.95)';
+      ctx.fill();
+      ctx.font = 'bold 9px DM Sans, sans-serif';
+      ctx.fillStyle = 'rgba(93,170,255,1)';
+      ctx.textAlign = 'left';
+      ctx.fillText('closest', px + 6, py + 3);
+    }
+
+    if (farIdx >= 0) {
+      const angle = (2 * Math.PI * farIdx) / distances.length;
+      const r = distances[farIdx] * rScale;
+      const px = lcx + r * Math.cos(angle);
+      const py = lcy + r * Math.sin(angle);
+      ctx.beginPath();
+      ctx.moveTo(lcx, lcy);
+      ctx.lineTo(px, py);
+      ctx.strokeStyle = 'rgba(255,140,66,0.6)';
+      ctx.lineWidth = 1.4;
+      ctx.setLineDash([2, 4]);
+      ctx.stroke();
+      ctx.setLineDash([]);
+      ctx.beginPath();
+      ctx.arc(px, py, 4.5, 0, Math.PI * 2);
+      ctx.fillStyle = 'rgba(255,140,66,0.9)';
+      ctx.fill();
+      ctx.fillStyle = 'rgba(255,140,66,1)';
+      ctx.fillText('farthest', px + 6, py + 3);
+    }
+
+    ctx.beginPath();
+    ctx.arc(lcx, lcy, 7, 0, Math.PI * 2);
+    ctx.fillStyle = 'rgba(178,139,255,1)';
+    ctx.fill();
+    ctx.strokeStyle = 'rgba(255,255,255,0.9)';
+    ctx.lineWidth = 1;
+    ctx.stroke();
+    ctx.font = 'bold 10px DM Sans, sans-serif';
+    ctx.fillStyle = '#fff';
+    ctx.textAlign = 'center';
+    ctx.fillText('you', lcx, lcy + 14);
+  }
+
+  function drawDim3Plus(LW, LH, lcx, lcy) {
+    // 3D: isometric projection of points in first 3 dimensions
+    ctx.fillStyle = 'rgba(30,60,40,0.15)';
+    ctx.fillRect(0, 0, LW, LH);
+
+    // Isometric projection: screen_x = x - z·cos(30°), screen_y = y + z·sin(30°)
+    const cos30 = Math.sqrt(3) / 2, sin30 = 0.5;
+    const scale = (Math.min(LW, LH) - 24) / 2;
+
+    // Project reference point to center
+    const refProjX = lcx, refProjY = lcy;
+
+    // Generate 3D projected positions for all points
+    const projPoints = [];
+    let nearIdx = 0, farIdx = 0;
+    let minDist = Infinity, maxDist = -Infinity;
+
+    for (let i = 0; i < pointSet.length; i++) {
+      const pt = pointSet[i];
+      // 3D coords relative to reference (first 3 dimensions only)
+      const dx = pt[0] - refPoint[0];
+      const dy = pt[1] - refPoint[1];
+      const dz = dimension >= 3 ? (pt[2] - refPoint[2]) : 0;
+
+      // Isometric projection
+      const projX = refProjX + (dx - dz * cos30) * scale;
+      const projY = refProjY - (dy + dz * sin30) * scale;
+
+      // Distance (still calculated using all dimensions)
+      const dist = distances[i];
+      if (dist < minDist) { minDist = dist; nearIdx = i; }
+      if (dist > maxDist) { maxDist = dist; farIdx = i; }
+
+      projPoints.push({
+        index: i,
+        x: projX,
+        y: projY,
+        z: dz, // for depth sorting
+        dist: dist,
+        isNearest: i === nearIdx,
+        isFarthest: i === farIdx
+      });
+    }
+
+    // Sort by z depth (painter's algorithm: back to front)
+    projPoints.sort((a, b) => a.z - b.z);
+
+    // Draw faint grid plane (XY)
+    ctx.strokeStyle = 'rgba(255,255,255,0.05)';
+    ctx.lineWidth = 0.5;
+    const gridSpacing = scale * 0.3;
+    for (let x = refProjX - scale; x <= refProjX + scale; x += gridSpacing) {
+      ctx.beginPath();
+      ctx.moveTo(x, refProjY - scale);
+      ctx.lineTo(x, refProjY + scale);
+      ctx.stroke();
+    }
+    for (let y = refProjY - scale; y <= refProjY + scale; y += gridSpacing) {
+      ctx.beginPath();
+      ctx.moveTo(refProjX - scale, y);
+      ctx.lineTo(refProjX + scale, y);
+      ctx.stroke();
+    }
+
+    // Draw all points (back to front)
+    for (const pt of projPoints) {
+      let color, radius;
+      if (pt.isNearest) {
+        color = 'rgba(93,170,255,0.9)';
+        radius = 4.5;
+      } else if (pt.isFarthest) {
+        color = 'rgba(255,140,66,0.8)';
+        radius = 4.5;
+      } else {
+        color = 'rgba(255,255,255,0.3)';
+        radius = 3;
+      }
+      ctx.beginPath();
+      ctx.arc(pt.x, pt.y, radius, 0, Math.PI * 2);
+      ctx.fillStyle = color;
+      ctx.fill();
+    }
+
+    // Draw axes at origin (reference point)
+    const axisLen = scale * 0.4;
+    ctx.lineWidth = 1.5;
+
+    // X axis (red)
+    ctx.strokeStyle = 'rgba(255,100,100,0.4)';
+    ctx.beginPath();
+    ctx.moveTo(refProjX, refProjY);
+    ctx.lineTo(refProjX + axisLen, refProjY);
+    ctx.stroke();
+
+    // Y axis (green)
+    ctx.strokeStyle = 'rgba(100,255,100,0.4)';
+    ctx.beginPath();
+    ctx.moveTo(refProjX, refProjY);
+    ctx.lineTo(refProjX, refProjY - axisLen);
+    ctx.stroke();
+
+    // Z axis (blue) — isometric
+    ctx.strokeStyle = 'rgba(100,150,255,0.4)';
+    ctx.beginPath();
+    ctx.moveTo(refProjX, refProjY);
+    ctx.lineTo(refProjX - axisLen * cos30, refProjY - axisLen * sin30);
+    ctx.stroke();
+
+    // Draw lines to nearest and farthest
+    if (nearIdx >= 0) {
+      const np = projPoints.find(p => p.index === nearIdx);
+      if (np) {
+        ctx.beginPath();
+        ctx.moveTo(refProjX, refProjY);
+        ctx.lineTo(np.x, np.y);
+        ctx.strokeStyle = 'rgba(93,170,255,0.6)';
+        ctx.lineWidth = 1.8;
+        ctx.setLineDash([4, 3]);
+        ctx.stroke();
+        ctx.setLineDash([]);
+
+        ctx.font = 'bold 9px DM Sans, sans-serif';
+        ctx.fillStyle = 'rgba(93,170,255,1)';
+        ctx.textAlign = 'left';
+        ctx.fillText('closest', np.x + 6, np.y - 2);
+      }
+    }
+
+    if (farIdx >= 0) {
+      const fp = projPoints.find(p => p.index === farIdx);
+      if (fp) {
+        ctx.beginPath();
+        ctx.moveTo(refProjX, refProjY);
+        ctx.lineTo(fp.x, fp.y);
+        ctx.strokeStyle = 'rgba(255,140,66,0.5)';
+        ctx.lineWidth = 1.4;
+        ctx.setLineDash([2, 4]);
+        ctx.stroke();
+        ctx.setLineDash([]);
+
+        ctx.font = 'bold 9px DM Sans, sans-serif';
+        ctx.fillStyle = 'rgba(255,140,66,1)';
+        ctx.textAlign = 'left';
+        ctx.fillText('farthest', fp.x + 6, fp.y - 2);
+      }
+    }
+
+    // Draw center (you)
+    ctx.beginPath();
+    ctx.arc(refProjX, refProjY, 7, 0, Math.PI * 2);
+    ctx.fillStyle = 'rgba(178,139,255,1)';
+    ctx.fill();
+    ctx.strokeStyle = 'rgba(255,255,255,0.9)';
+    ctx.lineWidth = 1.5;
+    ctx.stroke();
+    ctx.font = 'bold 10px DM Sans, sans-serif';
+    ctx.fillStyle = '#fff';
+    ctx.textAlign = 'center';
+    ctx.fillText('you', refProjX, refProjY + 14);
+  }
+
+  function drawChart() {
+    chartCtx.clearRect(0, 0, CW, CH);
+    const padL = 30, padR = 6, padT = 6, padB = 14;
+    const plotW = CW - padL - padR, plotH = CH - padT - padB;
+    const dMin = 1, dMax = 300;
+
+    function xAt(d) { return padL + (d - dMin) / (dMax - dMin) * plotW; }
+    function yAt(ratio) { return padT + (1 - ratio) * plotH; } // linear 0..1
+
+    chartCtx.strokeStyle = 'rgba(255,255,255,0.06)';
+    chartCtx.font = '8px JetBrains Mono, monospace';
+    chartCtx.fillStyle = 'rgba(255,255,255,0.22)';
+    chartCtx.textAlign = 'right';
+    [0, 0.5, 1].forEach(v => {
+      const y = yAt(v);
+      chartCtx.beginPath(); chartCtx.moveTo(padL, y); chartCtx.lineTo(CW - padR, y); chartCtx.stroke();
+      chartCtx.fillText(v.toFixed(1), padL - 4, y + 3);
+    });
+
+    if (chartData.length) {
+      chartCtx.beginPath();
+      chartData.forEach((pt, i) => {
+        const x = xAt(pt.d), y = yAt(pt.ratio);
+        if (i === 0) chartCtx.moveTo(x, y); else chartCtx.lineTo(x, y);
+      });
+      chartCtx.strokeStyle = 'rgba(93,170,255,0.85)';
+      chartCtx.lineWidth = 1.6;
+      chartCtx.stroke();
+    }
+
+    // Current dimension marker (uses the live single-sample ratio, so it
+    // can sit slightly off the averaged curve — that's real sampling noise)
+    const mx = xAt(dimension), my = yAt(lastSim.ratio);
+    chartCtx.strokeStyle = 'rgba(255,255,255,0.25)';
+    chartCtx.lineWidth = 1;
+    chartCtx.beginPath(); chartCtx.moveTo(mx, padT); chartCtx.lineTo(mx, CH - padB); chartCtx.stroke();
+    chartCtx.beginPath(); chartCtx.arc(mx, my, 3, 0, Math.PI * 2);
+    chartCtx.fillStyle = '#fff'; chartCtx.fill();
+
+    chartCtx.textAlign = 'center';
+    chartCtx.fillStyle = 'rgba(255,255,255,0.32)';
+    chartCtx.fillText('dimension →', CW / 2, CH - 3);
+
+    chartCtx.save();
+    chartCtx.translate(7, CH / 2);
+    chartCtx.rotate(-Math.PI / 2);
+    chartCtx.font = '8px JetBrains Mono, monospace';
+    chartCtx.fillStyle = 'rgba(255,255,255,0.22)';
+    chartCtx.textAlign = 'center';
+    chartCtx.fillText('nearest ÷ farthest', 0, 0);
+    chartCtx.restore();
+  }
+
+  function loop() {
+    drawMain();
+    drawChart();
+    requestAnimationFrame(loop);
+  }
+  loop();
+})();
+
+// ── Section 6: Volume-overlap collision probability ──
+(function () {
+  const dimSlider = document.getElementById('ovDimSlider');
+  const radSlider = document.getElementById('ovRadSlider');
+  const dimVal = document.getElementById('ovDimVal');
+  const radVal = document.getElementById('ovRadVal');
+  const probNum = document.getElementById('ovProbNum');
+  const triesNum = document.getElementById('ovTriesNum');
+  const mcNum = document.getElementById('ovMcNum');
+
+  const cv = document.getElementById('overlapCanvas');
+  const ctx = cv.getContext('2d');
+  const W = cv.width, H = cv.height;
+  const cx = W / 2, cy = H / 2;
+  const boxHalfPx = 95; // fixed drawn box half-width — never changes with dimension
+
+  let dimension = 3, rFrac = 0.70;
+  let prob = collisionProbability(dimension, rFrac);
+  let mcHits = 0, mcTotal = 0;
+  let darts = []; // rolling buffer of recent dart throws for the animation
+
+  function resetMonteCarlo() {
+    mcHits = 0; mcTotal = 0; darts = [];
+  }
+
+  function readUI() {
+    dimension = parseInt(dimSlider.value, 10);
+    rFrac = parseInt(radSlider.value, 10) / 100;
+    dimVal.textContent = dimension;
+    radVal.textContent = Math.round(rFrac * 100) + '%';
+    prob = collisionProbability(dimension, rFrac);
+    probNum.textContent = fmtPct(prob);
+    triesNum.textContent = 'Expected tries for one hit: ' + fmtBigNumber(1 / prob);
+    resetMonteCarlo(); // old samples no longer reflect the new d/r
+  }
+  dimSlider.addEventListener('input', readUI);
+  radSlider.addEventListener('input', readUI);
+  readUI();
+
+  // Throw one real d-dimensional dart, uniform in [-1,1]^d, and check
+  // whether its Euclidean norm is within r — only the first two
+  // coordinates are used for the on-screen position (a stylized stand-in;
+  // see caption). The hit/miss determination uses the FULL d dimensions.
+  function throwDart() {
+    let sq = 0, x = 0, y = 0;
+    for (let i = 0; i < dimension; i++) {
+      const v = Math.random() * 2 - 1;
+      if (i === 0) x = v; else if (i === 1) y = v;
+      sq += v * v;
+    }
+    const hit = Math.sqrt(sq) <= rFrac;
+    mcTotal++; if (hit) mcHits++;
+    darts.push({ x, y, hit, age: 0 });
+    if (darts.length > 70) darts.shift();
+  }
+
+  function drawMain() {
+    ctx.clearRect(0, 0, W, H);
+
+    // ── Wall / board boundary (the "throwing area") ───────────────────
+    ctx.strokeStyle = 'rgba(255,255,255,0.25)';
+    ctx.lineWidth = 1.5;
+    ctx.strokeRect(cx - boxHalfPx, cy - boxHalfPx, boxHalfPx * 2, boxHalfPx * 2);
+
+    // ── Dartboard — rings drawn from outside in, then bullseye ────────
+    // Outer circle (scoring zone boundary) — radius fixed to rFrac slider
+    const drawnR = boxHalfPx * rFrac;
+
+    // Outer scoring ring (75–100% of drawnR) — faint green
+    ctx.beginPath(); ctx.arc(cx, cy, drawnR, 0, Math.PI * 2);
+    ctx.fillStyle = 'rgba(30,90,40,0.20)'; ctx.fill();
+    ctx.strokeStyle = 'rgba(255,255,255,0.35)'; ctx.lineWidth = 1.4; ctx.stroke();
+
+    // Inner ring (45–75% of drawnR) — faint red
+    ctx.beginPath(); ctx.arc(cx, cy, drawnR * 0.72, 0, Math.PI * 2);
+    ctx.fillStyle = 'rgba(160,30,30,0.18)'; ctx.fill();
+    ctx.strokeStyle = 'rgba(255,255,255,0.14)'; ctx.lineWidth = 1; ctx.stroke();
+
+    // Bullseye zone (inner 28%) — brighter red
+    ctx.beginPath(); ctx.arc(cx, cy, drawnR * 0.28, 0, Math.PI * 2);
+    ctx.fillStyle = 'rgba(200,40,40,0.35)'; ctx.fill();
+    ctx.strokeStyle = 'rgba(255,255,255,0.22)'; ctx.lineWidth = 1; ctx.stroke();
+
+    // Bullseye centre dot
+    ctx.beginPath(); ctx.arc(cx, cy, 4, 0, Math.PI * 2);
+    ctx.fillStyle = 'rgba(255,60,60,0.7)'; ctx.fill();
+
+    // Crosshair lines on dartboard (very faint)
+    ctx.strokeStyle = 'rgba(255,255,255,0.06)'; ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.moveTo(cx - drawnR, cy); ctx.lineTo(cx + drawnR, cy); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(cx, cy - drawnR); ctx.lineTo(cx, cy + drawnR); ctx.stroke();
+
+    // One dart every other frame — calmer animation, less visual noise
+    if (Math.random() < 0.5) throwDart();
+
+    // Draw the dart buffer, fading with age
+    for (const d of darts) {
+      d.age += 1 / 60;
+      const opacity = Math.max(0, 0.85 - d.age * 0.25);
+      const px = cx + d.x * boxHalfPx, py = cy - d.y * boxHalfPx;
+      ctx.beginPath();
+      ctx.arc(px, py, d.hit ? 3.2 : 2.4, 0, Math.PI * 2);
+      ctx.fillStyle = d.hit ? `rgba(93,170,255,${opacity})` : `rgba(255,140,66,${opacity * 0.55})`;
+      ctx.fill();
+    }
+
+    mcNum.textContent = 'Live Monte Carlo: ' + mcHits + ' / ' + mcTotal +
+      ' darts landed inside (' + (mcTotal ? fmtPct(mcHits / mcTotal) : '–') + ')';
+  }
+
+  function loop() {
+    drawMain();
+    requestAnimationFrame(loop);
+  }
+  loop();
+})();
+
+</script>

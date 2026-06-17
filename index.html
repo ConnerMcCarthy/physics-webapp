@@ -257,6 +257,11 @@ canvas#stars {
 }
 
 @media (max-width: 800px) {
+  :root {
+    --text:       rgba(255,255,255,1.0);
+    --text-muted: rgba(255,255,255,0.88);
+    --text-faint: rgba(255,255,255,0.68);
+  }
   .cards { grid-template-columns: 1fr; max-width: 480px; }
   .page { padding: 60px 24px 80px; }
 }
@@ -289,6 +294,19 @@ canvas#stars {
       </div>
     </div>
 
+    <!-- Dimension Tradeoff -->
+    <div class="card active">
+      <div class="card-accent"></div>
+      <div class="card-icon">∞</div>
+      <div class="card-tag">High-Dimensional Geometry</div>
+      <h2 class="card-title">The Dimension Tradeoff</h2>
+      <p class="card-desc">As dimensions grow, geometric intuition breaks down in measurable ways — volume concentrates in shells, spheres flatten to pancakes, and nearest neighbors blur together. The same effect is also why AI embeddings work.</p>
+      <div class="card-foot">
+        <span class="card-badge live">Live</span>
+        <a class="card-link" href="/dimensions">Explore <span class="arrow">→</span></a>
+      </div>
+    </div>
+
     <!-- Fluid Dynamics -->
     <div class="card disabled">
       <div class="card-accent"></div>
@@ -296,18 +314,6 @@ canvas#stars {
       <div class="card-tag">Fluid Mechanics</div>
       <h2 class="card-title">Fluid Dynamics</h2>
       <p class="card-desc">Navier-Stokes equations, turbulence, and the physics of flow. Interactive simulations of laminar and chaotic fluid behavior.</p>
-      <div class="card-foot">
-        <span class="card-badge soon">Coming soon</span>
-      </div>
-    </div>
-
-    <!-- Placeholder -->
-    <div class="card disabled">
-      <div class="card-accent"></div>
-      <div class="card-icon">✦</div>
-      <div class="card-tag">In Development</div>
-      <h2 class="card-title">More to come</h2>
-      <p class="card-desc">More interactive physics explorations in progress.</p>
       <div class="card-foot">
         <span class="card-badge soon">Coming soon</span>
       </div>
