@@ -1,0 +1,546 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Why Does It Flip? — Tennis Racket Theorem</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Exo+2:wght@200;300;400;500;600;700&family=DM+Sans:wght@300;400;500&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #030711;
+  --border: rgba(255,255,255,0.08);
+  --purple: rgba(178,139,255,1);
+  --purple-dim: rgba(178,139,255,0.36);
+  --blue: rgba(93,170,255,1);
+  --blue-dim: rgba(93,170,255,0.30);
+  --text: rgba(255,255,255,0.88);
+  --text-muted: rgba(255,255,255,0.5);
+  --text-faint: rgba(255,255,255,0.28);
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html,body{width:100%;height:100%;background:var(--bg);color:var(--text);font-family:'DM Sans',sans-serif;overflow-x:hidden}
+
+.exp-inner{max-width:min(1200px,calc(100vw - 64px));margin:0 auto;padding:40px 32px 80px}
+.exp-header{display:flex;align-items:flex-start;justify-content:space-between;gap:20px;margin-bottom:52px;flex-wrap:wrap}
+.exp-back{display:flex;align-items:center;gap:8px;padding:8px 16px 8px 12px;border-radius:8px;border:1px solid var(--border);background:transparent;color:var(--text-muted);font-family:'DM Sans',sans-serif;font-size:13px;cursor:pointer;transition:all .18s;white-space:nowrap}
+.exp-back:hover{background:rgba(255,255,255,.05);color:var(--text)}
+.exp-title-group{flex:1}
+.exp-eyebrow{font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:.28em;text-transform:uppercase;color:var(--purple);opacity:.8;margin-bottom:8px}
+.exp-title{font-family:'Exo 2',sans-serif;font-weight:700;font-size:clamp(24px,4vw,50px);letter-spacing:-0.02em;line-height:1.05;color:#fff}
+
+.ke-controls-bar{display:flex;background:rgba(255,255,255,.04);border:1px solid var(--border);border-radius:10px;padding:4px;gap:2px;align-self:flex-start}
+.ke-level-btn{padding:7px 18px;border-radius:7px;border:none;background:transparent;color:var(--text-muted);font-family:'DM Sans',sans-serif;font-size:13px;font-weight:500;cursor:pointer;transition:all .18s}
+.ke-level-btn.active{background:rgba(178,139,255,.15);color:rgba(222,211,255,.95);box-shadow:0 0 0 1px rgba(178,139,255,.25)}
+
+.ke-simple .ke-detail-only{display:none!important}
+.ke-simple .ke-simple-only{display:block}
+:not(.ke-simple) .ke-simple-only{display:none!important}
+:not(.ke-simple) .ke-detail-only{display:block}
+
+.steps-list{display:flex;flex-direction:column;gap:2px}
+.ke-step{display:grid;grid-template-columns:1fr 1fr;border-radius:16px;overflow:hidden;background:rgba(255,255,255,.018);border:1px solid rgba(255,255,255,.05);position:relative;transition:border-color .3s}
+.ke-step:hover{border-color:rgba(178,139,255,.12)}
+.step-num{position:absolute;top:14px;left:18px;font-family:'Exo 2',sans-serif;font-weight:700;font-size:80px;line-height:1;color:rgba(178,139,255,.055);pointer-events:none;user-select:none}
+.ke-canvas-wrap{position:relative;z-index:1;padding:24px;display:block;background:rgba(255,255,255,.012);border-right:1px solid rgba(255,255,255,.04);width:100%;min-width:0}
+.ke-canvas-wrap canvas{display:block;width:100%;height:auto;max-width:100%;border-radius:6px}
+.ke-step-text{position:relative;z-index:1;padding:32px 38px;display:flex;flex-direction:column;justify-content:center;gap:11px}
+.step-tag{font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:.22em;text-transform:uppercase;color:var(--purple);opacity:.7}
+.step-heading{font-family:'Exo 2',sans-serif;font-weight:600;font-size:clamp(16px,2.2vw,24px);letter-spacing:-0.01em;color:#fff;line-height:1.2}
+.step-body{font-size:14px;line-height:1.72;color:var(--text-muted);max-width:460px}
+.step-body strong{color:var(--text);font-weight:500}
+.step-body em{color:rgba(178,139,255,.9);font-style:normal}
+.step-sep{height:1px;background:linear-gradient(90deg,transparent 4%,rgba(178,139,255,.07) 30%,rgba(93,170,255,.05) 70%,transparent 96%)}
+.ke-slider{width:100%;accent-color:var(--purple);cursor:pointer;margin-top:4px}
+.slider-row{display:flex;justify-content:space-between;font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--text-faint);margin-bottom:4px}
+
+.ke-callout{margin-top:24px;padding:30px 38px;border-radius:16px;background:linear-gradient(135deg,rgba(178,139,255,.06),rgba(93,170,255,.04));border:1px solid rgba(178,139,255,.14);position:relative;overflow:hidden}
+.ke-callout::before{content:'';position:absolute;top:0;left:0;right:0;height:1px;background:linear-gradient(90deg,transparent,rgba(178,139,255,.4),transparent)}
+.callout-h{font-family:'Exo 2',sans-serif;font-weight:600;font-size:17px;color:#fff;margin-bottom:10px}
+.callout-b{font-size:14px;line-height:1.72;color:var(--text-muted)}
+
+.deeper-insight{margin-top:48px;padding:32px;border:1px solid rgba(93,170,255,.2);border-radius:12px;background:linear-gradient(135deg,rgba(93,170,255,.06),rgba(178,139,255,.03))}
+.deeper-insight-content{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:16px}
+.deeper-insight-text{font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:rgba(93,170,255,.8);margin-bottom:6px}
+.deeper-insight-p{font-size:15px;line-height:1.6;color:var(--text-muted);max-width:600px}
+.deeper-insight-link{display:inline-block;padding:10px 24px;border-radius:8px;background:rgba(93,170,255,.12);border:1px solid rgba(93,170,255,.3);color:rgba(93,170,255,.95);font-family:'DM Sans',sans-serif;font-size:13px;font-weight:500;text-decoration:none;white-space:nowrap;transition:all .18s;cursor:pointer}
+.deeper-insight-link:hover{background:rgba(93,170,255,.18);border-color:rgba(93,170,255,.5)}
+
+@media(max-width:620px){
+  .exp-inner{max-width:100%;padding:20px 16px 60px}
+  .ke-step{grid-template-columns:1fr}
+  .ke-canvas-wrap{border-right:none;border-bottom:1px solid rgba(255,255,255,.04);padding:18px}
+  .ke-step-text{padding:22px 18px}
+  .step-num{font-size:54px}
+}
+</style>
+</head>
+<body class="ke-simple">
+
+<div class="exp-inner">
+
+  <div class="exp-header">
+    <a class="exp-back" href="/tennis">← Back</a>
+    <div class="exp-title-group">
+      <div class="exp-eyebrow">Tennis Racket Theorem · Physics Explainer</div>
+      <h2 class="exp-title">Why does it flip?</h2>
+    </div>
+    <div class="ke-controls-bar">
+      <button class="ke-level-btn active" data-level="simple">Simple</button>
+      <button class="ke-level-btn" data-level="detail">Detailed</button>
+    </div>
+  </div>
+
+  <div class="steps-list">
+
+    <div class="ke-step">
+      <div class="step-num">1</div>
+      <div class="ke-canvas-wrap"><canvas id="stepCanvas1" width="320" height="240"></canvas></div>
+      <div class="ke-step-text">
+        <div class="step-tag">Step 01 — Anatomy</div>
+        <h3 class="step-heading">Every object has three spin axes</h3>
+        <p class="step-body ke-simple-only">Any object flying freely in space has exactly <strong>three principal axes of rotation</strong> — three distinct ways to spin it. Your <em>phone</em> is a perfect example: spin it like a <em>baton</em> (around the long axis), flat like a <em>frisbee</em>, or flip it <em>end-over-end</em> by the side edges.</p>
+        <p class="step-body ke-detail-only">Any rigid body possesses three mutually perpendicular <strong>principal axes of inertia</strong> — eigenvectors of the inertia tensor <strong>I</strong>, with scalar moments I₁ ≤ I₂ ≤ I₃. For a typical smartphone (≈ 75 × 150 × 8 mm): I₁ ≈ long axis (smallest, ~470 g·cm²), I₂ ≈ width/toss axis (intermediate, ~1880 g·cm²), I₃ ≈ face normal (largest, ~2340 g·cm²).</p>
+      </div>
+    </div>
+
+    <div class="step-sep"></div>
+
+    <div class="ke-step">
+      <div class="step-num">2</div>
+      <div class="ke-canvas-wrap"><canvas id="stepCanvas2" width="320" height="240"></canvas></div>
+      <div class="ke-step-text">
+        <div class="step-tag">Step 02 — Stability</div>
+        <h3 class="step-heading">Two of them are perfectly stable</h3>
+        <p class="step-body ke-simple-only">Spin your phone like a <strong>baton</strong> (around the long axis) or flat like a <strong>frisbee</strong> and the rotation is <em>stable</em>. Even if you nudge it off-axis, the wobble bounces back — like a ball in a bowl. The animation shows a real small wobble that <em>stays bounded</em>.</p>
+        <p class="step-body ke-detail-only">Euler's rotation equations predict rotation about I₁ and I₃ is Lyapunov-stable. Linearizing about ω = ω₀ê₁ gives δ̈ω ~ −λ²δω (λ² > 0) — a harmonic oscillator. The perturbation oscillates at frequency λ but never grows. Both extremal axes sit at energy minima/maxima on the angular-momentum sphere, so perturbations have a restoring force.</p>
+      </div>
+    </div>
+
+    <div class="step-sep"></div>
+
+    <div class="ke-step">
+      <div class="step-num">3</div>
+      <div class="ke-canvas-wrap"><canvas id="stepCanvas3" width="700" height="420"></canvas></div>
+      <div class="ke-step-text">
+        <div class="step-tag">Step 03 — Instability</div>
+        <h3 class="step-heading">The middle axis triggers a chain reaction</h3>
+        <p class="step-body ke-simple-only"><strong>Try it:</strong> toss your phone flipping around the <em>side edges</em>. The ωx trace shows the signature — long flat plateaus near ±4 rad/s, then a sudden reversal. The <strong>pendulum</strong> on the right has the exact same shape: near the balance point it lingers with near-zero torque, then falls rapidly. Different system, one mathematical structure. Smaller wobble → longer plateaus, same flips.</p>
+        <p class="step-body ke-detail-only">Near I₂, Euler gives δ̈ω ~ +λ²δω (positive feedback). The pendulum at the separatrix has the same linearization: φ̈ ≈ +φ near θ = π. Both trace a <em>heteroclinic orbit</em> — plateau duration scales as ln(1/ε) in both cases. Flip period: T = 2K(k)/λ.</p>
+        <div class="ke-detail-only" style="margin-top:8px">
+          <div class="slider-row"><span>Perturbation size</span><span id="pertLabel">5%</span></div>
+          <input type="range" class="ke-slider" id="pertSlider" min="1" max="25" value="5">
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <div class="ke-callout">
+    <div class="callout-h">The takeaway</div>
+    <p class="callout-b">Toss your phone end-over-end around the side edges — it tumbles. Throw a book — it tumbles. This isn't a quirk of tennis rackets; it happens to <em>any</em> rigid body with three distinct moments of inertia. The intermediate axis is a <strong>saddle point</strong> of kinetic energy on the angular-momentum sphere: stable when perturbed in one plane, unstable in the other. Asteroids tumble this way. Spacecraft engineers must account for it — satellites need active nutation dampers to bleed energy out of the unstable wobble mode and stay pointing at their targets.</p>
+  </div>
+
+  <div class="deeper-insight">
+    <div class="deeper-insight-content">
+      <div>
+        <div class="deeper-insight-text">Deeper insight</div>
+        <p class="deeper-insight-p">Want to understand the geometry behind the flip? Explore how quaternions and 4D space explain why the tennis racket theorem emerges naturally from the structure of rotation itself.</p>
+      </div>
+      <a href="/tennis/why/4d" class="deeper-insight-link">Quaternions & 4D →</a>
+    </div>
+  </div>
+
+</div>
+
+<script>
+// Level toggle
+document.querySelectorAll('.ke-level-btn').forEach(btn => {
+  btn.addEventListener('click', function() {
+    document.querySelectorAll('.ke-level-btn').forEach(b => b.classList.remove('active'));
+    this.classList.add('active');
+    const body = document.body;
+    if (this.dataset.level === 'simple') {
+      body.classList.remove('ke-detail');
+      body.classList.add('ke-simple');
+    } else {
+      body.classList.remove('ke-simple');
+      body.classList.add('ke-detail');
+    }
+  });
+});
+
+// Back link
+document.querySelector('.exp-back').addEventListener('click', (e) => {
+  e.preventDefault();
+  window.location.href = '/tennis';
+});
+
+// Canvas 1: Three axes diagram — phone edition
+(function() {
+  const cv = document.getElementById('stepCanvas1');
+  const ctx = cv.getContext('2d');
+  const W = cv.width, H = cv.height;
+  const cx = W/2 - 8, cy = H/2 - 4;
+  const pw = 30, ph = 62, pr = 5;
+  let t = 0;
+
+  function arrow(x1,y1,x2,y2,color,lw) {
+    const dx=x2-x1, dy=y2-y1, len=Math.sqrt(dx*dx+dy*dy);
+    const ux=dx/len, uy=dy/len, hL=10, hW=5;
+    ctx.strokeStyle=color; ctx.fillStyle=color; ctx.lineWidth=lw;
+    ctx.beginPath(); ctx.moveTo(x1,y1); ctx.lineTo(x2-ux*hL,y2-uy*hL); ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(x2,y2);
+    ctx.lineTo(x2-ux*hL-uy*hW, y2-uy*hL+ux*hW);
+    ctx.lineTo(x2-ux*hL+uy*hW, y2-uy*hL-ux*hW);
+    ctx.fill();
+  }
+
+  function rr(x,y,w,h,r) {
+    ctx.beginPath();
+    ctx.moveTo(x+r,y);
+    ctx.lineTo(x+w-r,y); ctx.arcTo(x+w,y,x+w,y+r,r);
+    ctx.lineTo(x+w,y+h-r); ctx.arcTo(x+w,y+h,x+w-r,y+h,r);
+    ctx.lineTo(x+r,y+h); ctx.arcTo(x,y+h,x,y+h-r,r);
+    ctx.lineTo(x,y+r); ctx.arcTo(x,y,x+r,y,r);
+    ctx.closePath();
+  }
+
+  function drawPhone() {
+    ctx.save();
+    rr(cx-pw, cy-ph, pw*2, ph*2, pr);
+    ctx.fillStyle='rgba(20,30,60,0.92)'; ctx.fill();
+    ctx.strokeStyle='rgba(70,110,220,0.55)'; ctx.lineWidth=1.5; ctx.stroke();
+    rr(cx-pw+3, cy-ph+7, pw*2-6, ph*2-17, pr*0.6);
+    ctx.fillStyle='rgba(14,42,175,0.82)'; ctx.fill();
+    ctx.strokeStyle='rgba(60,120,255,0.28)'; ctx.lineWidth=0.7; ctx.stroke();
+    ctx.beginPath(); ctx.arc(cx, cy-ph+4, 2, 0, Math.PI*2);
+    ctx.fillStyle='rgba(0,0,0,0.55)'; ctx.fill();
+    rr(cx-8, cy+ph-7, 16, 3, 1.5);
+    ctx.strokeStyle='rgba(200,220,255,0.22)'; ctx.lineWidth=0.8; ctx.stroke();
+    ctx.restore();
+  }
+
+  function draw() {
+    ctx.clearRect(0,0,W,H);
+    t += 0.025;
+    drawPhone();
+    const aY = .52 + Math.sin(t*2.5)*.34;
+    ctx.strokeStyle=`rgba(80,220,120,${aY})`; ctx.lineWidth=2; ctx.setLineDash([4,3]);
+    ctx.beginPath(); ctx.moveTo(cx, cy+ph+6); ctx.lineTo(cx, cy-ph-6); ctx.stroke();
+    ctx.setLineDash([]);
+    arrow(cx, cy+ph+4, cx, cy+ph+20, `rgba(80,220,120,${aY})`, 2);
+    arrow(cx, cy-ph-4, cx, cy-ph-20, `rgba(80,220,120,${aY})`, 2);
+    ctx.fillStyle=`rgba(80,220,120,${aY+.1})`; ctx.font='bold 16px JetBrains Mono,monospace';
+    ctx.textAlign='left'; ctx.fillText('length axis', cx+8, cy-ph-6);
+    const pulse = .82;
+    ctx.strokeStyle=`rgba(178,139,255,${pulse})`; ctx.lineWidth=2;
+    ctx.beginPath(); ctx.moveTo(cx-pw-20,cy); ctx.lineTo(cx+pw+20,cy); ctx.stroke();
+    arrow(cx+pw+2, cy, cx+pw+22, cy, `rgba(178,139,255,${pulse})`, 2);
+    arrow(cx-pw-2, cy, cx-pw-22, cy, `rgba(178,139,255,${pulse})`, 2);
+    ctx.fillStyle=`rgba(178,139,255,${pulse+.1})`; ctx.font='bold 16px JetBrains Mono,monospace';
+    ctx.textAlign='left'; ctx.fillText('width axis', cx+pw+26, cy-5);
+    const aZ = .38 + Math.sin(t*.5+1)*.06;
+    const orx = pw + 22, ory = ph + 12;
+    const spinAngle = t * 0.7;
+    const gapHalf = 0.28;
+    const arcStart = spinAngle + gapHalf;
+    const arcEnd = spinAngle + Math.PI * 2 - gapHalf;
+    ctx.strokeStyle = `rgba(93,170,255,${aZ+0.1})`; ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.ellipse(cx, cy, orx, ory, 0, arcStart, arcEnd); ctx.stroke();
+    const ptX = cx + orx * Math.cos(arcEnd), ptY = cy + ory * Math.sin(arcEnd);
+    const tanX = -orx * Math.sin(arcEnd), tanY = ory * Math.cos(arcEnd);
+    const tlen = Math.sqrt(tanX*tanX + tanY*tanY);
+    const uax = tanX/tlen, uay = tanY/tlen;
+    ctx.fillStyle = `rgba(93,170,255,${aZ+0.1})`;
+    ctx.beginPath();
+    ctx.moveTo(ptX, ptY);
+    ctx.lineTo(ptX - uax*9 - uay*4.5, ptY - uay*9 + uax*4.5);
+    ctx.lineTo(ptX - uax*9 + uay*4.5, ptY - uay*9 - uax*4.5);
+    ctx.fill();
+    ctx.font='16px JetBrains Mono,monospace'; ctx.textAlign='center';
+    ctx.fillStyle=`rgba(93,170,255,${aZ+.1})`;
+    ctx.fillText('depth axis', cx, cy + ory + 15);
+    requestAnimationFrame(draw);
+  }
+  draw();
+})();
+
+// Canvas 2: Stable rotations
+(function() {
+  const cv = document.getElementById('stepCanvas2');
+  const ctx = cv.getContext('2d');
+  const W = cv.width, H = cv.height;
+  const half = W/2;
+  const cy = H/2 + 2;
+  let t = 0;
+
+  const pw=0.72, ph=1.52, pd=0.08;
+  const VERTS=[
+    [-pw,-ph,-pd],[pw,-ph,-pd],[pw,ph,-pd],[-pw,ph,-pd],
+    [-pw,-ph, pd],[pw,-ph, pd],[pw,ph, pd],[-pw,ph, pd]
+  ];
+
+  function proj3(cx,x,y,z,sc){ const f=4/(4+z); return [cx+x*sc*f, cy-y*sc*f, z]; }
+
+  function drawPhone(P3) {
+    const za=(a,b,c,d)=>(P3[a][2]+P3[b][2]+P3[c][2]+P3[d][2])/4;
+    const bk=za(0,1,2,3), fr=za(4,5,6,7);
+    function pf(idx,fill,stroke,lw){
+      ctx.beginPath();
+      idx.forEach((i,j)=>j===0?ctx.moveTo(P3[i][0],P3[i][1]):ctx.lineTo(P3[i][0],P3[i][1]));
+      ctx.closePath();
+      if(fill){ctx.fillStyle=fill;ctx.fill();}
+      if(stroke){ctx.strokeStyle=stroke;ctx.lineWidth=lw||1;ctx.stroke();}
+    }
+    if(bk<fr) pf([0,1,2,3],'rgba(20,30,62,0.88)','rgba(60,100,200,0.3)',1);
+    pf([0,4,7,3],'rgba(28,40,78,0.82)',null,0);
+    pf([1,2,6,5],'rgba(28,40,78,0.82)',null,0);
+    pf([0,1,5,4],'rgba(18,28,55,0.9)',null,0);
+    pf([3,7,6,2],'rgba(18,28,55,0.9)',null,0);
+    pf([4,5,6,7],'rgba(14,42,178,0.88)','rgba(93,170,255,0.5)',1.2);
+    if(bk>=fr) pf([0,1,2,3],'rgba(20,30,62,0.88)','rgba(60,100,200,0.3)',1);
+    ctx.strokeStyle='rgba(60,100,200,0.2)'; ctx.lineWidth=0.7;
+    [[0,4],[1,5],[2,6],[3,7]].forEach(([a,b])=>{
+      ctx.beginPath();ctx.moveTo(P3[a][0],P3[a][1]);ctx.lineTo(P3[b][0],P3[b][1]);ctx.stroke();
+    });
+  }
+
+  function draw() {
+    ctx.clearRect(0,0,W,H);
+    t+=0.028;
+    {
+      const cxL=half/2, sc=37, tilt=0.24, nut=Math.sin(t*0.65)*0.08;
+      function trL(x,y,z){
+        const c=Math.cos(t),s=Math.sin(t);
+        let rx=x*c+z*s, ry=y, rz=-x*s+z*c;
+        const cn=Math.cos(nut),sn=Math.sin(nut);
+        [ry,rz]=[ry*cn-rz*sn, ry*sn+rz*cn];
+        const ct=Math.cos(tilt),st=Math.sin(tilt);
+        return proj3(cxL, rx, ry*ct-rz*st, ry*st+rz*ct, sc);
+      }
+      ctx.save();ctx.beginPath();ctx.rect(0,0,half,H);ctx.clip();
+      drawPhone(VERTS.map(v=>trL(...v)));
+      ctx.restore();
+      ctx.fillStyle='rgba(255,255,255,.28)';ctx.font='12px JetBrains Mono,monospace';
+      ctx.textAlign='center';ctx.fillText('width axis',cxL,12);
+      ctx.fillStyle='rgba(80,220,120,.82)';ctx.font='bold 15px DM Sans,sans-serif';
+      ctx.textAlign='center';ctx.fillText('✓ stable',cxL,H-8);
+    }
+    {
+      const cxR=half+half/2, sc=37, tiltX=0.68;
+      function trR(x,y,z){
+        const c=Math.cos(t),s=Math.sin(t);
+        let x2=x*c-y*s, y2=x*s+y*c;
+        const ct=Math.cos(tiltX),st=Math.sin(tiltX);
+        let y3=y2*ct-z*st, z2=y2*st+z*ct;
+        return proj3(cxR, x2, y3, z2, sc);
+      }
+      ctx.save();ctx.beginPath();ctx.rect(half,0,half,H);ctx.clip();
+      drawPhone(VERTS.map(v=>trR(...v)));
+      ctx.restore();
+      ctx.fillStyle='rgba(255,255,255,.28)';ctx.font='12px JetBrains Mono,monospace';
+      ctx.textAlign='center';ctx.fillText('depth axis',cxR,12);
+      ctx.fillStyle='rgba(80,220,120,.82)';ctx.font='bold 15px DM Sans,sans-serif';
+      ctx.textAlign='center';ctx.fillText('✓ stable',cxR,H-8);
+    }
+    ctx.strokeStyle='rgba(255,255,255,.07)';ctx.lineWidth=1;
+    ctx.beginPath();ctx.moveTo(half,6);ctx.lineTo(half,H-6);ctx.stroke();
+    requestAnimationFrame(draw);
+  }
+  draw();
+})();
+
+// Canvas 3: Unstable rotation
+(function() {
+  const cv = document.getElementById('stepCanvas3');
+  const ctx = cv.getContext('2d');
+  const W = cv.width, H = cv.height;
+  const panelDiv = 367;
+  const cx = panelDiv/2, cy = H/2 + 6;
+  const rpx0 = panelDiv + 12;
+  const rpivX = rpx0 + (W - rpx0) / 2;
+  const rpivY = Math.round(H * 0.45);
+  const rPendL = 125;
+  const rSplitY = Math.round(H * 0.60);
+  const rty0 = rSplitY + 5, rty1 = H - 5, rtrH = rty1 - rty0;
+  const rtx0 = rpx0 + 2, rtx1 = W - 5, rtw = rtx1 - rtx0;
+  const TLEN = 180;
+  const phBuf = new Float32Array(TLEN);
+  let tHead = 0, tFilled = 0, frameN = 0;
+
+  let t = 0;
+  let mOmega = {x:4,y:.05,z:.05};
+  let mQuat = {x:0,y:0,z:0,w:1};
+  let flipFlash = 0;
+  let pertScale = 0.05;
+
+  function qmul(a,b) {
+    return {
+      x: a.w*b.x+a.x*b.w+a.y*b.z-a.z*b.y,
+      y: a.w*b.y-a.x*b.z+a.y*b.w+a.z*b.x,
+      z: a.w*b.z+a.x*b.y-a.y*b.x+a.z*b.w,
+      w: a.w*b.w-a.x*b.x-a.y*b.y-a.z*b.z
+    };
+  }
+  function qnorm(q) {
+    const l=Math.sqrt(q.x**2+q.y**2+q.z**2+q.w**2);
+    return {x:q.x/l,y:q.y/l,z:q.z/l,w:q.w/l};
+  }
+  function qrotv(q,v) {
+    const qp = {x:v[0],y:v[1],z:v[2],w:0};
+    const qi = {x:-q.x,y:-q.y,z:-q.z,w:q.w};
+    const r = qmul(qmul(q,qp),qi);
+    return [r.x,r.y,r.z];
+  }
+
+  const _IY=1.0, _IX=4.5, _IZ=5.5;
+  function miniEuler(w) {
+    return { x:((_IY-_IZ)/_IX)*w.y*w.z, y:((_IZ-_IX)/_IY)*w.z*w.x, z:((_IX-_IY)/_IZ)*w.x*w.y };
+  }
+  function miniStep(dt) {
+    const k1=miniEuler(mOmega);
+    const w2={x:mOmega.x+k1.x*dt/2,y:mOmega.y+k1.y*dt/2,z:mOmega.z+k1.z*dt/2};
+    const k2=miniEuler(w2);
+    const w3={x:mOmega.x+k2.x*dt/2,y:mOmega.y+k2.y*dt/2,z:mOmega.z+k2.z*dt/2};
+    const k3=miniEuler(w3);
+    const w4={x:mOmega.x+k3.x*dt,y:mOmega.y+k3.y*dt,z:mOmega.z+k3.z*dt};
+    const k4=miniEuler(w4);
+    mOmega={x:mOmega.x+(k1.x+2*k2.x+2*k3.x+k4.x)*dt/6,y:mOmega.y+(k1.y+2*k2.y+2*k3.y+k4.y)*dt/6,z:mOmega.z+(k1.z+2*k2.z+2*k3.z+k4.z)*dt/6};
+    const len=Math.sqrt(mOmega.x**2+mOmega.y**2+mOmega.z**2);
+    if(len>1e-10){const s=Math.sin(len*dt/2)/len;mQuat=qnorm(qmul(mQuat,{x:mOmega.x*s,y:mOmega.y*s,z:mOmega.z*s,w:Math.cos(len*dt/2)}));}
+  }
+
+  let prevFaceX = 1;
+  let mFlips = 0;
+  let halfCycles = 0;
+  let prevOmegaX = 4;
+
+  function resetCanvas3() {
+    mFlips=0; halfCycles=0; prevOmegaX=4;
+    mQuat={x:0,y:0,z:0,w:1};
+    mOmega={x:4,y:pertScale,z:pertScale};
+    tHead=0; tFilled=0; frameN=0;
+  }
+
+  function draw() {
+    ctx.clearRect(0,0,W,H);
+    t += 1/60;
+
+    for(let i=0;i<3;i++) miniStep(1/180);
+
+    if (prevOmegaX * mOmega.x < 0) halfCycles++;
+    prevOmegaX = mOmega.x;
+
+    frameN++;
+    if (frameN % 2 === 0) {
+      phBuf[tHead % TLEN] = (mOmega.x/4)*(mOmega.x/4);
+      tHead++;
+      tFilled = Math.min(tFilled + 1, TLEN);
+    }
+
+    const faceX = qrotv(mQuat,[1,0,0])[0];
+    if(prevFaceX>0 && faceX<-0.8){mFlips++;flipFlash=1;}
+    else if(prevFaceX<0 && faceX>0.8){flipFlash=1;}
+    prevFaceX=faceX;
+    flipFlash*=0.88;
+
+    ctx.save();
+    ctx.beginPath(); ctx.rect(0,0,panelDiv,H); ctx.clip();
+
+    if(flipFlash>0.1){
+      ctx.fillStyle=`rgba(178,139,255,${flipFlash*0.2})`;
+      ctx.fillRect(0,0,panelDiv,H);
+    }
+
+    const sc=56;
+    function tr3(x,y,z) {
+      const [rx,ry2,rz]=qrotv(mQuat,[x,y,z]);
+      const f=4/(4+rz);
+      return [cx+rx*sc*f, cy-ry2*sc*f, rz];
+    }
+
+    const pw3=0.72, ph3=1.52, pd3=0.08;
+    const VP=[
+      [-pw3,-ph3,-pd3],[pw3,-ph3,-pd3],[pw3,ph3,-pd3],[-pw3,ph3,-pd3],
+      [-pw3,-ph3, pd3],[pw3,-ph3, pd3],[pw3,ph3, pd3],[-pw3,ph3, pd3]
+    ];
+    const PP=VP.map(v=>tr3(...v));
+    const screenAvg=(PP[4][2]+PP[5][2]+PP[6][2]+PP[7][2])/4;
+    const backAvg=(PP[0][2]+PP[1][2]+PP[2][2]+PP[3][2])/4;
+
+    function pface(idx,fill,stroke,lw) {
+      ctx.beginPath();
+      idx.forEach((i,j)=>j===0?ctx.moveTo(PP[i][0],PP[i][1]):ctx.lineTo(PP[i][0],PP[i][1]));
+      ctx.closePath();
+      if(fill){ctx.fillStyle=fill;ctx.fill();}
+      if(stroke){ctx.strokeStyle=stroke;ctx.lineWidth=lw||1;ctx.stroke();}
+    }
+
+    if(backAvg<screenAvg) pface([0,1,2,3],'rgba(18,28,60,0.9)','rgba(100,130,255,0.28)',1);
+    pface([0,4,7,3],'rgba(24,36,72,0.85)',null,0);
+    pface([1,2,6,5],'rgba(24,36,72,0.85)',null,0);
+    pface([0,1,5,4],'rgba(14,22,48,0.9)',null,0);
+    pface([3,7,6,2],'rgba(14,22,48,0.9)',null,0);
+    pface([4,5,6,7],'rgba(14,42,178,0.9)','rgba(178,139,255,0.55)',1.3);
+    if(backAvg>=screenAvg) pface([0,1,2,3],'rgba(18,28,60,0.9)','rgba(100,130,255,0.28)',1);
+    ctx.strokeStyle='rgba(100,130,255,0.2)'; ctx.lineWidth=0.7;
+    [[0,4],[1,5],[2,6],[3,7]].forEach(([a,b])=>{
+      ctx.beginPath(); ctx.moveTo(PP[a][0],PP[a][1]); ctx.lineTo(PP[b][0],PP[b][1]); ctx.stroke();
+    });
+
+
+    ctx.restore();
+
+    const hPend=(mOmega.x/4)*(mOmega.x/4);
+    const atTop=hPend>0.82;
+    const fromTop=Math.PI-Math.acos(Math.max(-1,Math.min(1,1-2*hPend)));
+    const pendCumAngle=halfCycles*Math.PI+(halfCycles%2===0?fromTop:Math.PI-fromTop);
+    const rbobX=rpivX+rPendL*Math.sin(pendCumAngle);
+    const rbobY=rpivY-rPendL*Math.cos(pendCumAngle);
+
+    ctx.strokeStyle='rgba(255,255,255,.07)';ctx.lineWidth=1;
+    ctx.beginPath();ctx.moveTo(panelDiv+0.5,4);ctx.lineTo(panelDiv+0.5,H-4);ctx.stroke();
+
+
+    ctx.strokeStyle='rgba(255,255,255,0.07)';ctx.lineWidth=1;
+    ctx.beginPath();ctx.arc(rpivX,rpivY,rPendL,0,Math.PI*2);ctx.stroke();
+
+    ctx.strokeStyle=atTop?'rgba(178,139,255,0.4)':'rgba(178,139,255,0.1)';
+    ctx.lineWidth=2;ctx.setLineDash([3,5]);
+    ctx.beginPath();ctx.arc(rpivX,rpivY,rPendL,-Math.PI*0.92,-Math.PI*0.08);ctx.stroke();
+    ctx.setLineDash([]);
+
+
+    ctx.strokeStyle='rgba(255,255,255,0.3)';ctx.lineWidth=1.5;
+    ctx.beginPath();ctx.moveTo(rpivX,rpivY);ctx.lineTo(rbobX,rbobY);ctx.stroke();
+
+    ctx.fillStyle='rgba(255,255,255,0.38)';
+    ctx.beginPath();ctx.arc(rpivX,rpivY,3,0,Math.PI*2);ctx.fill();
+
+    ctx.shadowBlur=atTop?14:5;
+    ctx.shadowColor=atTop?'rgba(178,139,255,0.9)':'rgba(93,170,255,0.5)';
+    ctx.fillStyle=atTop?'rgba(178,139,255,0.95)':'rgba(93,170,255,0.82)';
+    ctx.beginPath();ctx.arc(rbobX,rbobY,7,0,Math.PI*2);ctx.fill();
+    ctx.shadowBlur=0;
+
+
+    requestAnimationFrame(draw);
+  }
+  draw();
+
+  const slider = document.getElementById('pertSlider');
+  if(slider) {
+    slider.addEventListener('input', function() {
+      pertScale = +this.value / 100;
+      document.getElementById('pertLabel').textContent = this.value + '%';
+      resetCanvas3();
+    });
+  }
+})();
+</script>
+
+</body>
+</html>

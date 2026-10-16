@@ -1,0 +1,328 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="An interactive explanation of positional notation and collisions in base phi.">
+  <title>Writing Numbers in Base Phi</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600&family=JetBrains+Mono:wght@400;500;600&family=Manrope:wght@500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <header class="intro">
+    <a class="home-link" href="/" aria-label="Back to Interactive Physics">Interactive Physics</a>
+    <p class="eyebrow">An irrational numeral system</p>
+    <h1>Writing numbers in base <span class="phi">φ</span></h1>
+    <p class="lead"><strong>Base φ uses powers of the golden ratio as place values, but one algebraic identity makes different digit strings collide.</strong></p>
+    <div class="intro-equations" aria-label="Core base phi equations">
+      <span>(<i>d</i>₂<i>d</i>₁<i>d</i>₀)<sub>φ</sub> = <i>d</i>₂φ² + <i>d</i>₁φ + <i>d</i>₀</span>
+      <span class="equation-arrow">φ² = φ + 1</span>
+      <span><b>011<sub>φ</sub> = 100<sub>φ</sub></b></span>
+    </div>
+  </header>
+
+  <main>
+    <section class="collision-lab" aria-labelledby="collision-title">
+      <div class="collision-heading">
+        <div>
+          <p class="eyebrow">The strange carry rule</p>
+          <h2 id="collision-title">Two spellings, one number</h2>
+        </div>
+        <p>In an ordinary integer base, place values are independent. In base φ, the next place is exactly equal to the previous two added together.</p>
+      </div>
+
+      <div class="collision-workspace">
+        <div class="place-value-board">
+          <div class="place-headings" aria-hidden="true"><span>φ²</span><span>φ¹</span><span>φ⁰</span></div>
+          <div class="digit-row" id="collisionDigits" aria-live="polite">
+            <span class="digit-tile" data-place="2">0</span>
+            <span class="digit-tile source" data-place="1">1</span>
+            <span class="digit-tile source" data-place="0">1</span>
+          </div>
+          <div class="place-values" aria-hidden="true"><span>0 × φ²</span><span>1 × φ</span><span>1 × 1</span></div>
+          <div class="carry-path" aria-hidden="true"><i></i><i></i><b>carry</b></div>
+        </div>
+
+        <div class="collision-equivalence">
+          <div><strong id="collisionSymbols">011<sub>φ</sub></strong><span id="collisionExpansion">φ + 1</span></div>
+          <span class="equals-symbol">=</span>
+          <div><strong>100<sub>φ</sub></strong><span>φ²</span></div>
+          <p>Both equal <b>φ² ≈ 2.618034</b>.</p>
+        </div>
+
+        <div class="collision-explanation">
+          <span class="panel-label">What behaves like carrying?</span>
+          <div class="carry-equation"><b>1φ + 1</b><span>→</span><b>1φ²</b></div>
+          <p>Whenever a base-φ string contains <strong>011</strong>, that block can be replaced by <strong>100</strong> without changing its value.</p>
+          <button class="button primary" id="carryButton" type="button">Carry 011 → 100</button>
+          <button class="button grid-reveal-button" id="showCollisionOnGridButton" type="button">Show both on the 2D grid</button>
+        </div>
+      </div>
+
+      <div class="normalizer">
+        <div>
+          <p class="eyebrow">Try a longer string</p>
+          <h3>Normalize repeated collisions</h3>
+          <p>Repeatedly replace every `011` block with `100` to remove adjacent 1s.</p>
+        </div>
+        <label>
+          <span>Base-φ digits</span>
+          <input id="normalizeInput" type="text" value="011011" inputmode="numeric" maxlength="20" pattern="[01]+">
+        </label>
+        <button class="button" id="normalizeButton" type="button">Normalize</button>
+        <div class="normalize-result" aria-live="polite">
+          <span id="normalizeSteps">011011 → 100011 → 100100</span>
+          <strong id="normalizeResult">100100<sub>φ</sub></strong>
+        </div>
+      </div>
+    </section>
+
+    <section class="explorer" aria-labelledby="explorer-title">
+      <div class="section-heading">
+        <div>
+          <p class="eyebrow">Interactive explorer</p>
+          <h2 id="explorer-title">Watch multiplication become motion</h2>
+        </div>
+        <p>Drag to pan, scroll to zoom, or drag the gold point to choose new coefficients.</p>
+      </div>
+
+      <div class="workspace">
+        <div class="canvas-shell">
+          <canvas id="coefficientCanvas" aria-label="Cartesian coefficient grid with a horizontal a-axis and vertical b-axis"></canvas>
+          <div class="canvas-key" aria-hidden="true">
+            <span><i class="dot current"></i> current pair</span>
+            <span><i class="dot powers"></i> one spelling</span>
+            <span><i class="dot collision"></i> collision</span>
+          </div>
+          <div class="atlas-summary" id="atlasSummary"><strong>64</strong> strings · <strong>33</strong> points · <strong>21</strong> collisions</div>
+          <button class="icon-button fit-button" id="fitViewButton" type="button" title="Fit visible points" aria-label="Fit visible points">⌖</button>
+        </div>
+
+        <aside class="control-panel" aria-label="Coefficient controls">
+          <div class="current-readout">
+            <span class="panel-label">Current coefficient pair</span>
+            <div class="pair" id="pairReadout">(1, 0)</div>
+            <div class="expression" id="expressionReadout">1 + 0φ</div>
+            <div class="complex-readout" id="complexReadout">Complex coordinate z = 1</div>
+            <div class="real-value">Real value <strong id="realValue">1.000000</strong></div>
+          </div>
+
+          <div class="coefficient-inputs">
+            <label>
+              <span>Coefficient a</span>
+              <input id="aInput" type="number" value="1" step="1" inputmode="decimal">
+            </label>
+            <label>
+              <span>Coefficient b</span>
+              <input id="bInput" type="number" value="0" step="1" inputmode="decimal">
+            </label>
+          </div>
+
+          <div class="primary-actions">
+            <button class="button primary" id="multiplyButton" type="button">Multiply by φ</button>
+            <button class="button" id="backButton" type="button">Step by 1/φ</button>
+          </div>
+          <div class="secondary-actions">
+            <button class="button" id="resetButton" type="button">Reset</button>
+            <button class="button" id="autoButton" type="button">Auto-play</button>
+            <button class="button" id="pauseButton" type="button" disabled>Pause</button>
+          </div>
+
+          <div class="algebra-card" aria-live="polite">
+            <span class="panel-label">What the multiplication does</span>
+            <div class="algebra-lines">
+              <span id="algebraStart">a + bφ</span>
+              <span class="down">↓ × φ</span>
+              <span id="algebraStepOne">aφ + bφ²</span>
+              <span id="algebraStepTwo">= aφ + b(φ + 1)</span>
+              <strong id="algebraResult">= b + (a + b)φ</strong>
+            </div>
+          </div>
+
+          <div class="toggle-list">
+            <label class="toggle"><input id="basisToggle" type="checkbox"><span></span>Show basis vectors</label>
+            <label class="toggle"><input id="gridToggle" type="checkbox" checked><span></span>Show grid</label>
+            <label class="toggle"><input id="transformGridToggle" type="checkbox"><span></span>Show transformed grid</label>
+            <label class="toggle"><input id="eigenToggle" type="checkbox"><span></span>Show eigen-directions</label>
+            <label class="toggle"><input id="complexToggle" type="checkbox"><span></span>Complex-coordinate lens</label>
+            <label class="toggle"><input id="digitAtlasToggle" type="checkbox" checked><span></span><b id="atlasToggleLabel">Digit representations through 111111</b></label>
+          </div>
+          <label class="atlas-digit-control">
+            <span>Maximum digits <strong id="atlasDigitCount">6</strong></span>
+            <input id="atlasDigitSlider" type="range" min="1" max="8" value="6" step="1">
+            <small id="atlasDigitLimit">0 through 111111</small>
+          </label>
+        </aside>
+      </div>
+    </section>
+
+    <section class="key-idea" aria-labelledby="key-title">
+      <div>
+        <p class="eyebrow">Key idea</p>
+        <h2 id="key-title">One real number, two coefficients</h2>
+      </div>
+      <p>Multiplying by φ on the real number line means <strong>stretching</strong>. Multiplying by φ in coefficient space means applying the <strong>Fibonacci matrix</strong>.</p>
+      <div class="matrix-equation" aria-label="Matrix zero one, one one">
+        <span>M =</span>
+        <span class="matrix"><i>0</i><i>1</i><i>1</i><i>1</i></span>
+        <span class="matrix-map">(<i>a</i>, <i>b</i>) → (<i>b</i>, <i>a</i> + <i>b</i>)</span>
+      </div>
+    </section>
+
+    <section class="complex-lens-section" aria-labelledby="complex-lens-title">
+      <div class="complex-lens-copy">
+        <p class="eyebrow">Complex-coordinate lens</p>
+        <h2 id="complex-lens-title">Read the same pair as <i>a</i> + <i>b</i>i</h2>
+        <p>Replace the basis labels <strong>1 and φ</strong> with the familiar complex-plane labels <strong>1 and i</strong>. The coordinates do not change, but they can now be read as complex numbers.</p>
+        <button class="button" id="complexViewButton" type="button">Show complex coordinates</button>
+      </div>
+      <div class="complex-map" aria-label="Golden ratio coefficient pairs interpreted as complex numbers">
+        <div><span>φ⁰</span><strong>(1, 0)</strong><b>1</b></div>
+        <div><span>φ¹</span><strong>(0, 1)</strong><b>i</b></div>
+        <div><span>φ²</span><strong>(1, 1)</strong><b>1 + i</b></div>
+        <div><span>φ³</span><strong>(1, 2)</strong><b>1 + 2i</b></div>
+        <div><span>φ⁴</span><strong>(2, 3)</strong><b>2 + 3i</b></div>
+        <div><span>φ⁵</span><strong>(3, 5)</strong><b>3 + 5i</b></div>
+      </div>
+      <div class="complex-rule">
+        <span class="panel-label">The induced complex-coordinate rule</span>
+        <strong>x + yi → y + (x + y)i</strong>
+        <p>This is a useful coordinate picture, but it is not ordinary multiplication by a fixed complex constant: it skews the plane instead of rotating and scaling it uniformly.</p>
+      </div>
+    </section>
+
+    <section class="digit-map-section" aria-labelledby="digit-map-title">
+      <div class="digit-map-copy">
+        <p class="eyebrow">From symbols to coordinates</p>
+        <h2 id="digit-map-title">How base-φ digits land on the grid</h2>
+        <p>Read a binary-looking digit string by place value, with the rightmost position representing φ⁰. Every <strong>1</strong> adds that power’s coefficient pair.</p>
+        <div class="place-value-equation">
+          <span>1011<sub>φ</sub></span>
+          <b>= φ³ + φ + 1</b>
+          <b>= 2 + 3φ</b>
+          <strong>↔ (2, 3)</strong>
+        </div>
+      </div>
+
+      <div class="digit-table" role="table" aria-label="Base phi digit strings mapped to coefficient coordinates">
+        <div class="digit-table-head" role="row"><span>Base-φ symbols</span><span>Value</span><span>Grid point</span></div>
+        <div role="row"><strong>00<sub>φ</sub></strong><span>0</span><b>(0, 0)</b></div>
+        <div role="row"><strong>01<sub>φ</sub></strong><span>1</span><b>(1, 0)</b></div>
+        <div role="row"><strong>10<sub>φ</sub></strong><span>φ</span><b>(0, 1)</b></div>
+        <div role="row"><strong>11<sub>φ</sub></strong><span>1 + φ</span><b>(1, 1)</b></div>
+        <div role="row"><strong>101<sub>φ</sub></strong><span>1 + φ²</span><b>(2, 1)</b></div>
+        <div role="row"><strong>1000<sub>φ</sub></strong><span>φ³</span><b>(1, 2)</b></div>
+      </div>
+
+      <div class="digit-builder">
+        <label for="phiDigitsInput">Enter 0s and 1s</label>
+        <div class="digit-input-row">
+          <input id="phiDigitsInput" type="text" value="1011" inputmode="numeric" maxlength="16" pattern="[01]+" aria-describedby="digitHint">
+          <span>base φ</span>
+        </div>
+        <p id="digitHint">Rightmost digit = φ⁰</p>
+        <div class="digit-result">
+          <span id="digitExpression">φ³ + φ + 1 = 2 + 3φ</span>
+          <strong id="digitPair">(2, 3)</strong>
+        </div>
+        <button class="button" id="plotDigitsButton" type="button">Plot this point</button>
+      </div>
+
+      <aside class="identity-note">
+        <span class="panel-label">One important surprise</span>
+        <strong>100<sub>φ</sub> = 11<sub>φ</sub></strong>
+        <p>Because φ² = φ + 1, different digit strings can name the same number and the same grid point. A canonical notation normally avoids consecutive 1s.</p>
+      </aside>
+    </section>
+
+    <section class="explanation-band" aria-labelledby="coordinates-title">
+      <div class="copy-column">
+        <p class="eyebrow">What the picture means</p>
+        <h2 id="coordinates-title">Coordinates, not extra dimensions</h2>
+        <p class="large-copy">Base-φ numbers themselves lie on the real number line. This 2D grid represents the coefficients of <strong>1</strong> and <strong>φ</strong>, not two independent spatial dimensions.</p>
+        <p>The pair (3, 5), for example, is a compact way to record the single real number 3 + 5φ ≈ 11.090. The horizontal movement counts copies of 1; vertical movement counts copies of φ.</p>
+      </div>
+      <div class="basis-diagram" aria-label="Basis correspondence diagram">
+        <div class="basis-row one"><span class="basis-arrow">→</span><strong>1</strong><small>(1, 0)</small></div>
+        <div class="basis-row phi-row"><span class="basis-arrow">↑</span><strong>φ</strong><small>(0, 1)</small></div>
+        <div class="equals-line">3 horizontal + 5 vertical</div>
+        <div class="basis-result">3 + 5φ <span>≈ 11.090</span></div>
+      </div>
+    </section>
+
+    <section class="comparison" aria-labelledby="comparison-title">
+      <div class="section-heading">
+        <div>
+          <p class="eyebrow">Two kinds of multiplication</p>
+          <h2 id="comparison-title">Complex rotation vs. coefficient transformation</h2>
+        </div>
+      </div>
+      <div class="comparison-grid">
+        <article class="comparison-item complex-item">
+          <div class="mini-plane complex-plane" aria-hidden="true">
+            <span class="plane-axis x"></span><span class="plane-axis y"></span>
+            <span class="complex-vector before"></span><span class="complex-vector after"></span>
+            <i class="arc"></i>
+          </div>
+          <p class="eyebrow">Complex base i − 1</p>
+          <h3>Rotation plus scaling</h3>
+          <p>Complex multiplication naturally acts on a genuine 2D plane. Direction changes and length scales at the same time.</p>
+        </article>
+        <article class="comparison-item phi-item">
+          <div class="mini-plane matrix-plane" aria-hidden="true">
+            <span class="square before-square"></span><span class="square after-square"></span>
+            <span class="matrix-vector"></span>
+          </div>
+          <p class="eyebrow">Real base φ</p>
+          <h3>Stretching, seen through coefficients</h3>
+          <p>On the real line, multiplication by φ simply stretches. In coefficient space, the same algebra appears as the skewing map (a, b) → (b, a + b).</p>
+        </article>
+      </div>
+    </section>
+
+    <section class="eigen-section" aria-labelledby="eigen-title">
+      <div class="eigen-copy">
+        <p class="eyebrow">Major visual insight</p>
+        <h2 id="eigen-title">The matrix has two special directions</h2>
+        <p>Most arrows change both length and direction under the Fibonacci matrix. Along an eigen-direction, the arrow stays on the same line.</p>
+      </div>
+      <div class="eigen-values">
+        <article>
+          <span class="eigen-swatch expand"></span>
+          <div><strong>λ₁ = φ</strong><p>Expands by φ and keeps its direction.</p></div>
+        </article>
+        <article>
+          <span class="eigen-swatch contract"></span>
+          <div><strong>λ₂ = −1/φ</strong><p>Contracts by 1/φ and flips direction.</p></div>
+        </article>
+      </div>
+      <button class="button eigen-jump" id="showEigenButton" type="button">Show on the main canvas</button>
+    </section>
+
+    <section class="fibonacci-section" aria-labelledby="fibonacci-title">
+      <div class="fib-header">
+        <div>
+          <p class="eyebrow">Why Fibonacci numbers appear</p>
+          <h2 id="fibonacci-title">Each step adds the last two coefficients</h2>
+          <p>For n ≥ 1, <strong>φⁿ = Fₙ₋₁ + Fₙφ</strong>. The matrix update is exactly the Fibonacci recurrence.</p>
+        </div>
+        <label class="power-slider">
+          <span>Powers shown: <strong id="powerCount">7</strong></span>
+          <input id="powerSlider" type="range" min="1" max="15" value="7">
+        </label>
+      </div>
+      <div class="sequence-strip" id="sequenceStrip" aria-live="polite"></div>
+      <button class="button sequence-button" id="animatePowersButton" type="button">Animate the sequence</button>
+    </section>
+  </main>
+
+  <footer>
+    <p>φ = (1 + √5) / 2 ≈ 1.618034</p>
+    <a href="/">Back to Interactive Physics</a>
+  </footer>
+
+  <script src="script.js"></script>
+</body>
+</html>

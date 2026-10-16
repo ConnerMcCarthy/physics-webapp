@@ -107,23 +107,23 @@ window.DIM_CONTENT = {
       tag:     'Section 05 — Finding open players',
       heading: 'Who do I pass to? Everyone feels the same distance away',
 
-      simple: `You're on the ball in soccer — you want to find the nearest open
+      simple: `You're on the ball in soccer. You want to find the nearest open
         teammate. Easy in real life. In 100 dimensions, <strong>every player on the
-        field is roughly the same distance from you</strong> — shortest pass and
-        longest pass are nearly identical. There's no "nearby" anymore.`,
+        field is roughly the same distance from you.</strong> Shortest pass and
+        longest pass are nearly identical. There's no "nearby" anymore. The edges dominate.`,
 
       detail: `Imagine you hold the ball on a <em>d</em>-dimensional soccer field.
-        Scatter N teammates randomly and measure the distance to the nearest vs.
+        Scatter 20 teammates randomly and measure the distance to the nearest vs.
         farthest. In 2D or 3D the ratio (nearest ÷ farthest) is small — some players
         are clearly closer. As <em>d</em> grows the ratio climbs toward 1: all
         players become roughly equidistant. This is the <strong>curse of
         dimensionality for search</strong> — nearest-neighbor lookup loses meaning
         when every candidate is equally "close."`,
 
-      caption: `The 2D field layout is a stylized stand-in — it doesn't show which
-        player is truly nearest or farthest in d-dimensional space. The pass distances
-        and ratio below come from a real simulation running in d dimensions, re-rolled
-        live as you move the sliders.`,
+      caption: `The 2D field uses stylized directions, but each player's distance
+        from you is scaled from the real d-dimensional distance. As d rises, the dots
+        collapse toward the same ring because nearest and farthest are becoming
+        nearly equal.`,
     },
 
     // ── 06: Volume-overlap / darts ────────────────────────────────────────────

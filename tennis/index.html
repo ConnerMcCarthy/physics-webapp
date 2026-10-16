@@ -148,63 +148,88 @@ input[type=range].exp-slider{width:100%;accent-color:var(--purple);cursor:pointe
 
 /* ── Mobile: main sim controls ≤ 768px ── */
 @media(max-width:768px){
-  /* Canvas is the hero — drop the title overlay entirely */
-  #simOverlay{display:none}
-  #flipBadge{display:none}
+  /* Canvas is the hero — drop the title overlay and flip badge entirely */
+  #simOverlay{display:none!important}
+  #flipBadge{display:none!important}
 
-  /* Info chips: top-right, horizontal, compact */
+  /* Info chips: ultra-compact, top-left corner */
   #infoPanel{
-    top:12px;right:12px;bottom:auto;
-    flex-direction:row;flex-wrap:wrap;justify-content:flex-end;
-    gap:4px;max-width:calc(100vw - 24px)
+    top:8px;right:auto;left:8px;bottom:auto;
+    flex-direction:column;flex-wrap:nowrap;justify-content:flex-start;
+    gap:3px;max-width:calc(100vw - 16px);z-index:11
   }
-  .info-chip{padding:4px 9px;font-size:10px;gap:5px}
+  .info-chip{
+    padding:3px 8px;font-size:9px;gap:4px;
+    background:rgba(3,7,17,.72);border:1px solid rgba(255,255,255,.08)
+  }
 
-  /* Shape tabs: anchored left/right, no transform centering */
+  /* Shape tabs: 2-column grid for compact footprint */
   #shapeSelect{
-    bottom:148px;
-    left:12px;right:12px;
+    bottom:120px;
+    left:8px;right:8px;
     transform:none;
     width:auto;
-    padding:4px;gap:4px;
-    justify-content:center
+    padding:4px;gap:3px;
+    display:grid;grid-template-columns:1fr 1fr;justify-items:stretch
   }
-  .shape-btn{padding:5px 12px;font-size:11px;flex:1;text-align:center}
+  .shape-btn{
+    padding:5px 8px;font-size:10px;text-align:center;
+    border-radius:6px
+  }
 
-  /* Axis selector: anchored left/right, single scrollable row */
+  /* Axis selector: 3-column grid, no horizontal scroll */
   #axisSelect{
-    bottom:96px;
-    left:12px;right:12px;
+    bottom:68px;
+    left:8px;right:8px;
     transform:none;
     width:auto;
-    flex-wrap:nowrap;overflow-x:auto;
-    -webkit-overflow-scrolling:touch;scrollbar-width:none;
-    padding:4px;gap:4px;
-    justify-content:flex-start
+    display:grid;grid-template-columns:1fr 1fr 1fr;
+    gap:3px;padding:4px;
+    overflow-x:visible
   }
   #axisSelect::-webkit-scrollbar{display:none}
-  .axis-btn{padding:5px 11px;font-size:11px;flex-shrink:0}
+  .axis-btn{
+    padding:5px 6px;font-size:9px;flex-shrink:0;
+    white-space:normal;line-height:1.2;
+    border-radius:6px
+  }
 
-  /* Sim buttons: anchored left/right, wraps cleanly */
+  /* Sim buttons: split primary (wide) + secondary in 2-col grid */
   #simButtons{
-    bottom:12px;
-    left:12px;right:12px;
+    bottom:8px;
+    left:8px;right:8px;
     transform:none;
     width:auto;
-    gap:6px;flex-wrap:wrap;justify-content:center
+    gap:4px;
+    display:grid;grid-template-columns:1fr 1fr;
+    grid-auto-flow:row
   }
-  .sim-btn{padding:6px 13px;font-size:12px}
-  .sim-btn.primary{flex:0 0 100%;justify-content:center}
+  .sim-btn{
+    padding:5px 8px;font-size:9px;
+    border-radius:6px
+  }
+  .sim-btn.primary{
+    grid-column:1/-1;padding:6px 8px;font-size:10px
+  }
 
-  /* Explorer panel: bottom sheet */
+  /* Explorer panel: full-width bottom sheet with reduced height */
   #explorerPanel{
     left:0;right:0;top:auto;bottom:0;
     transform:none;width:100%;max-width:100%;
-    max-height:60vh;border-radius:14px 14px 0 0;
-    overflow-y:auto
+    max-height:55vh;border-radius:16px 16px 0 0;
+    overflow-y:auto;z-index:50
   }
-  .exp-i-cell{padding:5px 7px}
-  .exp-i-val{font-size:13px}
+  .exp-ph{padding:10px 12px 8px}
+  .exp-pt{font-size:11px}
+  .exp-presets{padding:6px 10px;gap:4px}
+  .exp-preset{padding:4px 8px;font-size:10px}
+  .exp-map-wrap{padding:6px 10px 2px}
+  .exp-sliders{padding:8px 10px;gap:8px}
+  .exp-sl-label{font-size:9px}
+  .exp-stats{padding:8px 10px}
+  .exp-i-cell{padding:5px 6px}
+  .exp-i-val{font-size:12px}
+  .exp-i-name{font-size:8px}
 }
 
 /* ── Explanation screen: stack steps vertically ≤ 620px ── */
@@ -359,7 +384,7 @@ input[type=range].exp-slider{width:100%;accent-color:var(--purple);cursor:pointe
 
       <div class="ke-step ke-step-hero">
         <div class="step-num">3</div>
-        <div class="ke-canvas-wrap"><canvas id="stepCanvas3" width="520" height="280"></canvas></div>
+        <div class="ke-canvas-wrap"><canvas id="stepCanvas3" width="700" height="280"></canvas></div>
         <div class="ke-step-text">
           <div class="step-tag">Step 03 — Instability</div>
           <h3 class="step-heading">The middle axis triggers a chain reaction</h3>
@@ -377,6 +402,18 @@ input[type=range].exp-slider{width:100%;accent-color:var(--purple);cursor:pointe
     <div class="ke-callout">
       <div class="callout-h">The takeaway</div>
       <p class="callout-b">Toss your phone end-over-end around the side edges — it tumbles. Throw a book — it tumbles. This isn't a quirk of tennis rackets; it happens to <em>any</em> rigid body with three distinct moments of inertia. The intermediate axis is a <strong>saddle point</strong> of kinetic energy on the angular-momentum sphere: stable when perturbed in one plane, unstable in the other. Asteroids tumble this way. Spacecraft engineers must account for it — satellites need active nutation dampers to bleed energy out of the unstable wobble mode and stay pointing at their targets.</p>
+    </div>
+
+    <div style="margin-top:48px;padding:32px;border:1px solid rgba(93,170,255,.2);border-radius:12px;background:linear-gradient(135deg,rgba(93,170,255,.06),rgba(178,139,255,.03))">
+      <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:16px">
+        <div>
+          <div style="font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:rgba(93,170,255,.8);margin-bottom:6px">Deeper insight</div>
+          <p style="font-size:15px;line-height:1.6;color:var(--text-muted);max-width:600px">Want to understand the geometry behind the flip? Explore how quaternions and 4D space explain why the tennis racket theorem emerges naturally from the structure of rotation itself.</p>
+        </div>
+        <a href="/tennis/why/4d" style="display:inline-block;padding:10px 24px;border-radius:8px;background:rgba(93,170,255,.12);border:1px solid rgba(93,170,255,.3);color:rgba(93,170,255,.95);font-family:'DM Sans',sans-serif;font-size:13px;font-weight:500;text-decoration:none;white-space:nowrap;transition:all .18s;cursor:pointer" onmouseover="this.style.background='rgba(93,170,255,.18)';this.style.borderColor='rgba(93,170,255,.5)'" onmouseout="this.style.background='rgba(93,170,255,.12)';this.style.borderColor='rgba(93,170,255,.3)'">
+          Quaternions & 4D →
+        </a>
+      </div>
     </div>
 
   </div>
@@ -950,8 +987,7 @@ document.querySelectorAll('.shape-btn').forEach(btn => {
 });
 
 document.getElementById('whyBtn').addEventListener('click', () => {
-  document.getElementById('explainScreen').style.display = 'block';
-  document.getElementById('explainScreen').scrollTop = 0;
+  window.location.href = '/tennis/why/';
 });
 document.getElementById('backBtn').addEventListener('click', () => {
   document.getElementById('explainScreen').style.display = 'none';
@@ -1318,13 +1354,13 @@ document.getElementById('expClose').addEventListener('click', () => {
   const cv = document.getElementById('stepCanvas3');
   const ctx = cv.getContext('2d');
   const W = cv.width, H = cv.height;
-  const panelDiv = 272; // phone | pendulum panel divider
+  const panelDiv = 367; // phone | pendulum panel divider (scaled for 700px canvas)
   const cx = panelDiv/2, cy = H/2 + 6;
-  // Right panel: pendulum
-  const rpx0 = panelDiv + 8;
+  // Right panel: pendulum (expanded to fill full height)
+  const rpx0 = panelDiv + 12;
   const rpivX = rpx0 + (W - rpx0) / 2;  // horizontal centre of right panel
-  const rpivY = Math.round(H * 0.34);    // pivot near upper third
-  const rPendL = 52;
+  const rpivY = Math.round(H * 0.45);   // pivot lower for more swing room
+  const rPendL = 125;                   // longer pendulum to use full space
   const rSplitY = Math.round(H * 0.60); // pendulum vis | height trace divider
   const rty0 = rSplitY + 5, rty1 = H - 5, rtrH = rty1 - rty0;
   const rtx0 = rpx0 + 2, rtx1 = W - 5, rtw = rtx1 - rtx0;
@@ -1532,32 +1568,6 @@ document.getElementById('expClose').addEventListener('click', () => {
       ctx.fillText('lingering…',rpivX,rpivY-rPendL+20);
     }
 
-    // Horizontal divider between pendulum vis and height trace
-    ctx.strokeStyle='rgba(255,255,255,0.06)';ctx.lineWidth=1;
-    ctx.beginPath();ctx.moveTo(rpx0+2,rSplitY);ctx.lineTo(W-2,rSplitY);ctx.stroke();
-
-    // Height trace
-    ctx.fillStyle='rgba(178,139,255,0.05)';ctx.fillRect(rtx0,rty0,rtw,rtrH*0.16);
-    ctx.fillStyle='rgba(178,139,255,0.45)';ctx.font='6.5px JetBrains Mono,monospace';
-    ctx.textAlign='left';ctx.fillText('height',rtx0+1,rty0+8);
-    ctx.fillStyle='rgba(255,255,255,0.18)';ctx.font='6px JetBrains Mono,monospace';
-    ctx.textAlign='right';ctx.fillText('top',rtx1-1,rty0+8);ctx.fillText('bot',rtx1-1,rty1-2);
-
-    if(tFilled>1){
-      ctx.beginPath();ctx.strokeStyle='rgba(178,139,255,.85)';ctx.lineWidth=1.3;
-      for(let i=0;i<tFilled;i++){
-        const bi=((tHead-tFilled+i)%TLEN+TLEN)%TLEN;
-        const px=rtx0+(i/(TLEN-1))*rtw;
-        const py=rty1-phBuf[bi]*rtrH;
-        i===0?ctx.moveTo(px,py):ctx.lineTo(px,py);
-      }
-      ctx.stroke();
-      const curH=phBuf[(tHead-1+TLEN)%TLEN];
-      const dotX=rtx0+((tFilled-1)/(TLEN-1))*rtw;
-      const dotY=rty1-curH*rtrH;
-      ctx.fillStyle='rgba(178,139,255,1)';
-      ctx.beginPath();ctx.arc(dotX,dotY,2.5,0,Math.PI*2);ctx.fill();
-    }
 
     requestAnimationFrame(draw);
   }

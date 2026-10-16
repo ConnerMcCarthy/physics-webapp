@@ -376,11 +376,6 @@ body::before{
     <div class="dim-num">05</div>
     <div class="dim-visual">
       <canvas id="nnCanvas" width="560" height="440"></canvas>
-      <div class="diagram-legend">
-        <span><i class="dot" style="background:rgba(178,139,255,.9)"></i>you (at center)</span>
-        <span><i class="dot" style="background:var(--blue)"></i>closest player (d‑dim)</span>
-        <span><i class="dot" style="background:var(--orange)"></i>farthest player (d‑dim)</span>
-      </div>
       <canvas id="nnChart" class="detail-only" width="280" height="120"></canvas>
       <p class="dim-caption detail-only"></p>
     </div>
@@ -405,12 +400,8 @@ body::before{
         </div>
         <!-- Detailed mode: slider for fine control -->
         <div class="ctrl-block detail-only">
-          <div class="slider-row"><span>Dimension (d)</span><span class="val" id="nnDimVal">10</span></div>
-          <input type="range" class="ds-slider" id="nnDimSlider" min="1" max="300" value="10" step="1">
-        </div>
-        <div class="ctrl-block detail-only">
-          <div class="slider-row"><span>Number of points</span><span class="val" id="nnPtsVal">50</span></div>
-          <input type="range" class="ds-slider" id="nnPtsSlider" min="10" max="200" value="50" step="1">
+          <div class="slider-row"><span>Dimension (d)</span><span class="val" id="nnDimVal">2</span></div>
+          <input type="range" class="ds-slider" id="nnDimSlider" min="1" max="300" value="2" step="1">
         </div>
         <div class="ctrl-block detail-only">
           <button class="wv-pair-btn" id="nnResampleBtn">↻ Resample points</button>
@@ -1298,10 +1289,8 @@ function approxOrthogonalCount(d, toleranceDegrees) {
 // ── Section 5: Nearest-neighbor distance collapse ──
 (function () {
   const dimSlider = document.getElementById('nnDimSlider');
-  const ptsSlider = document.getElementById('nnPtsSlider');
   const resampleBtn = document.getElementById('nnResampleBtn');
   const dimVal = document.getElementById('nnDimVal');
-  const ptsVal = document.getElementById('nnPtsVal');
   const nearNum = document.getElementById('nnNearNum');
   const farNum = document.getElementById('nnFarNum');
   const ratioNum = document.getElementById('nnRatioNum');
@@ -1315,10 +1304,11 @@ function approxOrthogonalCount(d, toleranceDegrees) {
   const chartCtx = chartCv.getContext('2d');
   const CW = chartCv.width, CH = chartCv.height;
 
-  let dimension = 10, numPoints = 50;
+  let dimension = 2;
+  const numPoints = 20;
   let lastSim = { minDist: 0, maxDist: 0, ratio: 0 };
   let distances = []; // Full distance array for visualization
-  let chartData = []; // [{d, ratio}], recomputed only on points-slider RELEASE to avoid jank
+  let chartData = []; // [{d, ratio}], averaged curve for the fixed 20-point sample size
 
   // Fixed random point set (in 300 dimensions) — only changes on explicit resample.
   // This way changing dimension doesn't re-randomize the diagram.
@@ -1334,6 +1324,13 @@ function approxOrthogonalCount(d, toleranceDegrees) {
     for (let p = 0; p < numPoints; p++) {
       const pt = new Array(MAX_DIM);
       for (let i = 0; i < MAX_DIM; i++) pt[i] = Math.random();
+
+      // Keep the 1D view legible: half the players start left of you,
+      // half right of you, with jittered offsets. Higher coordinates
+      // remain random, so the high-dimensional distance story is intact.
+      const side = p < numPoints / 2 ? -1 : 1;
+      const offset = 0.08 + Math.random() * 0.40;
+      pt[0] = Math.max(0.02, Math.min(0.98, refPoint[0] + side * offset));
       pointSet.push(pt);
     }
   }
@@ -1392,17 +1389,7 @@ function approxOrthogonalCount(d, toleranceDegrees) {
   });
 
   // Set initial button state
-  document.querySelector('[data-dim="10"]')?.classList.add('active');
-  ptsSlider.addEventListener('input', () => {
-    numPoints = parseInt(ptsSlider.value, 10);
-    ptsVal.textContent = numPoints;
-  });
-  // Heavy chart recompute deferred to slider release, per spec guidance
-  // ("compute on slider release to avoid jank").
-  ptsSlider.addEventListener('change', () => {
-    runLiveSim();
-    recomputeChartCurve();
-  });
+  document.querySelector('[data-dim="2"]')?.classList.add('active');
   resampleBtn.addEventListener('click', () => {
     generateRandomPoints();
     runLiveSim();
@@ -1425,33 +1412,33 @@ function approxOrthogonalCount(d, toleranceDegrees) {
     // ── Dimension-specific visualizations ────────────────────────────────
     if (dimension === 1) {
       drawDim1(LW, LH, lcx, lcy);
-    } else if (dimension === 2) {
-      drawDim2(LW, LH, lcx, lcy);
     } else {
-      drawDim3Plus(LW, LH, lcx, lcy);
+      drawDim2(LW, LH, lcx, lcy);
     }
 
     ctx.restore();
   }
 
   function drawDim1(LW, LH, lcx, lcy) {
-    // 1D: horizontal line, points spread along it by distance
+    // 1D: horizontal field line. Points use their signed 1D coordinate
+    // relative to you, while closest/farthest are still picked from the
+    // real distance array.
     ctx.fillStyle = 'rgba(30,60,40,0.15)';
     ctx.fillRect(0, 0, LW, LH);
 
     const lineY = lcy;
-    const lineW = LW * 0.7;
+    const lineW = LW * 0.76;
     const lineX0 = lcx - lineW / 2;
+    const lineX1 = lcx + lineW / 2;
 
     // Faint line
     ctx.strokeStyle = 'rgba(255,255,255,0.12)';
     ctx.lineWidth = 1;
     ctx.beginPath();
     ctx.moveTo(lineX0, lineY);
-    ctx.lineTo(lineX0 + lineW, lineY);
+    ctx.lineTo(lineX1, lineY);
     ctx.stroke();
 
-    // Points along the line by distance
     let nearIdx = 0, farIdx = 0;
     let minD = Infinity, maxD = -Infinity;
     for (let i = 0; i < distances.length; i++) {
@@ -1459,48 +1446,79 @@ function approxOrthogonalCount(d, toleranceDegrees) {
       if (distances[i] > maxD) { maxD = distances[i]; farIdx = i; }
     }
 
-    const dRange = maxD - minD || 1;
+    const positions = [];
+    const sortedBySignedX = pointSet
+      .map((pt, index) => ({ index, signed: pt[0] - refPoint[0] }))
+      .sort((a, b) => a.signed - b.signed);
+    sortedBySignedX.forEach((item, rank) => {
+      positions[item.index] = lineX0 + (rank / Math.max(1, pointSet.length - 1)) * lineW;
+    });
+    const minVisualOffset = 22;
     for (let i = 0; i < distances.length; i++) {
-      const frac = (distances[i] - minD) / dRange;
-      const px = lineX0 + frac * lineW;
+      let px = positions[i];
+      if (i === nearIdx) px = lcx + minVisualOffset;
+      if (Math.abs(px - lcx) < minVisualOffset) {
+        const side = i === nearIdx ? 1 : (px < lcx || (px === lcx && i % 2 === 0) ? -1 : 1);
+        px = lcx + side * minVisualOffset;
+      }
+      positions[i] = px;
       ctx.beginPath();
-      ctx.arc(px, lineY, 2.5, 0, Math.PI * 2);
+      ctx.arc(px, lineY, i === nearIdx || i === farIdx ? 5 : 4, 0, Math.PI * 2);
       ctx.fillStyle = i === nearIdx ? 'rgba(93,170,255,0.8)' : i === farIdx ? 'rgba(255,140,66,0.7)' : 'rgba(255,255,255,0.25)';
       ctx.fill();
     }
 
-    // Labels
-    ctx.font = 'bold 9px DM Sans, sans-serif';
-    ctx.textAlign = 'center';
-    ctx.fillStyle = 'rgba(255,255,255,0.5)';
-    ctx.fillText('min distance', lineX0, lineY - 8);
-    ctx.fillText('max distance', lineX0 + lineW, lineY - 8);
+    labelPoint('closest', positions[nearIdx], lineY - 8, 'rgba(93,170,255,1)');
+    labelPoint('farthest', positions[farIdx], lineY + 18, 'rgba(255,140,66,1)');
 
-    // Center point
-    ctx.beginPath();
-    ctx.arc(lcx, lcy, 5, 0, Math.PI * 2);
-    ctx.fillStyle = 'rgba(178,139,255,0.9)';
-    ctx.fill();
-    ctx.strokeStyle = 'rgba(255,255,255,0.8)';
-    ctx.lineWidth = 1;
-    ctx.stroke();
+    drawSoccerBall(lcx, lcy, 6);
+
+    function labelPoint(text, x, y, color) {
+      const tx = Math.max(28, Math.min(LW - 30, x));
+      ctx.font = 'bold 9px DM Sans, sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillStyle = color;
+      ctx.fillText(text, tx, y);
+    }
   }
 
   function drawDim2(LW, LH, lcx, lcy) {
-    // 2D: radial view (original diagram)
-    ctx.fillStyle = 'rgba(30,60,40,0.15)';
+    // 2D field for every d >= 2. Angle comes from the first two
+    // coordinates, but radius comes from the real d-dimensional
+    // distance. As d rises and min/max distance collapse, the players
+    // visibly settle onto nearly the same ring.
+    ctx.fillStyle = 'rgba(24,78,44,0.18)';
     ctx.fillRect(0, 0, LW, LH);
 
-    const maxCanvasR = Math.min(lcx, lcy) - 12;
-    const rScale = maxCanvasR / (lastSim.maxDist * 1.2);
+    const fieldX = 12, fieldY = 14;
+    const fieldW = LW - fieldX * 2, fieldH = LH - fieldY * 2;
+    const fieldR = 8;
+    const maxCanvasR = Math.min(fieldW, fieldH) * 0.43;
+    const rScale = maxCanvasR / Math.max(lastSim.maxDist, 1e-9);
 
-    ctx.strokeStyle = 'rgba(255,255,255,0.08)';
+    // Soccer field frame.
+    ctx.strokeStyle = 'rgba(255,255,255,0.16)';
     ctx.lineWidth = 1;
-    for (let r = lastSim.minDist * 0.5; r <= lastSim.maxDist; r += (lastSim.maxDist - lastSim.minDist) / 4) {
+    roundRect(fieldX, fieldY, fieldW, fieldH, fieldR);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(lcx, fieldY);
+    ctx.lineTo(lcx, fieldY + fieldH);
+    ctx.strokeStyle = 'rgba(255,255,255,0.08)';
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.arc(lcx, lcy, 26, 0, Math.PI * 2);
+    ctx.stroke();
+
+    // Distance rings: the outer ring is the current farthest player.
+    const ringRadii = [lastSim.minDist, (lastSim.minDist + lastSim.maxDist) / 2, lastSim.maxDist];
+    ringRadii.forEach((dist, idx) => {
       ctx.beginPath();
-      ctx.arc(lcx, lcy, r * rScale, 0, Math.PI * 2);
+      ctx.arc(lcx, lcy, dist * rScale, 0, Math.PI * 2);
+      ctx.strokeStyle = idx === 2 ? 'rgba(255,140,66,0.18)' : 'rgba(255,255,255,0.07)';
+      ctx.lineWidth = idx === 2 ? 1.2 : 0.8;
       ctx.stroke();
-    }
+    });
 
     let nearIdx = 0, farIdx = 0;
     let minDist = Infinity, maxDist = -Infinity;
@@ -1509,11 +1527,18 @@ function approxOrthogonalCount(d, toleranceDegrees) {
       if (distances[i] > maxDist) { maxDist = distances[i]; farIdx = i; }
     }
 
+    const positions = [];
+    const closestMinVisualR = 24;
     for (let i = 0; i < distances.length; i++) {
-      const angle = (2 * Math.PI * i) / distances.length;
-      const r = distances[i] * rScale;
+      const dx = pointSet[i][0] - refPoint[0];
+      const dy = pointSet[i][1] - refPoint[1];
+      const baseAngle = Math.atan2(dy, dx);
+      let angle = Number.isFinite(baseAngle) ? baseAngle : (2 * Math.PI * i) / distances.length;
+      if (i === nearIdx && Math.cos(angle) < 0) angle = Math.PI - angle;
+      const r = i === nearIdx ? Math.max(distances[i] * rScale, closestMinVisualR) : distances[i] * rScale;
       const px = lcx + r * Math.cos(angle);
       const py = lcy + r * Math.sin(angle);
+      positions.push({ x: px, y: py });
       ctx.beginPath();
       ctx.arc(px, py, 3.2, 0, Math.PI * 2);
       ctx.fillStyle = 'rgba(255,255,255,0.3)';
@@ -1521,10 +1546,7 @@ function approxOrthogonalCount(d, toleranceDegrees) {
     }
 
     if (nearIdx >= 0) {
-      const angle = (2 * Math.PI * nearIdx) / distances.length;
-      const r = distances[nearIdx] * rScale;
-      const px = lcx + r * Math.cos(angle);
-      const py = lcy + r * Math.sin(angle);
+      const { x: px, y: py } = positions[nearIdx];
       ctx.beginPath();
       ctx.moveTo(lcx, lcy);
       ctx.lineTo(px, py);
@@ -1540,14 +1562,11 @@ function approxOrthogonalCount(d, toleranceDegrees) {
       ctx.font = 'bold 9px DM Sans, sans-serif';
       ctx.fillStyle = 'rgba(93,170,255,1)';
       ctx.textAlign = 'left';
-      ctx.fillText('closest', px + 6, py + 3);
+      labelPoint('closest', px, py, 'rgba(93,170,255,1)');
     }
 
     if (farIdx >= 0) {
-      const angle = (2 * Math.PI * farIdx) / distances.length;
-      const r = distances[farIdx] * rScale;
-      const px = lcx + r * Math.cos(angle);
-      const py = lcy + r * Math.sin(angle);
+      const { x: px, y: py } = positions[farIdx];
       ctx.beginPath();
       ctx.moveTo(lcx, lcy);
       ctx.lineTo(px, py);
@@ -1560,182 +1579,100 @@ function approxOrthogonalCount(d, toleranceDegrees) {
       ctx.arc(px, py, 4.5, 0, Math.PI * 2);
       ctx.fillStyle = 'rgba(255,140,66,0.9)';
       ctx.fill();
-      ctx.fillStyle = 'rgba(255,140,66,1)';
-      ctx.fillText('farthest', px + 6, py + 3);
+      labelPoint('farthest', px, py, 'rgba(255,140,66,1)');
     }
 
-    ctx.beginPath();
-    ctx.arc(lcx, lcy, 7, 0, Math.PI * 2);
-    ctx.fillStyle = 'rgba(178,139,255,1)';
-    ctx.fill();
-    ctx.strokeStyle = 'rgba(255,255,255,0.9)';
-    ctx.lineWidth = 1;
-    ctx.stroke();
+    drawSoccerBall(lcx, lcy, 8);
     ctx.font = 'bold 10px DM Sans, sans-serif';
     ctx.fillStyle = '#fff';
     ctx.textAlign = 'center';
     ctx.fillText('you', lcx, lcy + 14);
+
+    function roundRect(x, y, w, h, r) {
+      ctx.beginPath();
+      ctx.moveTo(x + r, y);
+      ctx.lineTo(x + w - r, y);
+      ctx.quadraticCurveTo(x + w, y, x + w, y + r);
+      ctx.lineTo(x + w, y + h - r);
+      ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
+      ctx.lineTo(x + r, y + h);
+      ctx.quadraticCurveTo(x, y + h, x, y + h - r);
+      ctx.lineTo(x, y + r);
+      ctx.quadraticCurveTo(x, y, x + r, y);
+    }
+
+    function labelPoint(text, x, y, color) {
+      const tx = Math.max(6, Math.min(LW - 46, x + 6));
+      const ty = Math.max(10, Math.min(LH - 18, y - 2));
+      ctx.font = 'bold 9px DM Sans, sans-serif';
+      ctx.fillStyle = color;
+      ctx.textAlign = 'left';
+      ctx.fillText(text, tx, ty);
+    }
   }
 
-  function drawDim3Plus(LW, LH, lcx, lcy) {
-    // 3D: isometric projection of points in first 3 dimensions
-    ctx.fillStyle = 'rgba(30,60,40,0.15)';
-    ctx.fillRect(0, 0, LW, LH);
-
-    // Isometric projection: screen_x = x - z·cos(30°), screen_y = y + z·sin(30°)
-    const cos30 = Math.sqrt(3) / 2, sin30 = 0.5;
-    const scale = (Math.min(LW, LH) - 24) / 2;
-
-    // Project reference point to center
-    const refProjX = lcx, refProjY = lcy;
-
-    // Generate 3D projected positions for all points
-    const projPoints = [];
-    let nearIdx = 0, farIdx = 0;
-    let minDist = Infinity, maxDist = -Infinity;
-
-    for (let i = 0; i < pointSet.length; i++) {
-      const pt = pointSet[i];
-      // 3D coords relative to reference (first 3 dimensions only)
-      const dx = pt[0] - refPoint[0];
-      const dy = pt[1] - refPoint[1];
-      const dz = dimension >= 3 ? (pt[2] - refPoint[2]) : 0;
-
-      // Isometric projection
-      const projX = refProjX + (dx - dz * cos30) * scale;
-      const projY = refProjY - (dy + dz * sin30) * scale;
-
-      // Distance (still calculated using all dimensions)
-      const dist = distances[i];
-      if (dist < minDist) { minDist = dist; nearIdx = i; }
-      if (dist > maxDist) { maxDist = dist; farIdx = i; }
-
-      projPoints.push({
-        index: i,
-        x: projX,
-        y: projY,
-        z: dz, // for depth sorting
-        dist: dist,
-        isNearest: i === nearIdx,
-        isFarthest: i === farIdx
-      });
-    }
-
-    // Sort by z depth (painter's algorithm: back to front)
-    projPoints.sort((a, b) => a.z - b.z);
-
-    // Draw faint grid plane (XY)
-    ctx.strokeStyle = 'rgba(255,255,255,0.05)';
-    ctx.lineWidth = 0.5;
-    const gridSpacing = scale * 0.3;
-    for (let x = refProjX - scale; x <= refProjX + scale; x += gridSpacing) {
-      ctx.beginPath();
-      ctx.moveTo(x, refProjY - scale);
-      ctx.lineTo(x, refProjY + scale);
-      ctx.stroke();
-    }
-    for (let y = refProjY - scale; y <= refProjY + scale; y += gridSpacing) {
-      ctx.beginPath();
-      ctx.moveTo(refProjX - scale, y);
-      ctx.lineTo(refProjX + scale, y);
-      ctx.stroke();
-    }
-
-    // Draw all points (back to front)
-    for (const pt of projPoints) {
-      let color, radius;
-      if (pt.isNearest) {
-        color = 'rgba(93,170,255,0.9)';
-        radius = 4.5;
-      } else if (pt.isFarthest) {
-        color = 'rgba(255,140,66,0.8)';
-        radius = 4.5;
-      } else {
-        color = 'rgba(255,255,255,0.3)';
-        radius = 3;
-      }
-      ctx.beginPath();
-      ctx.arc(pt.x, pt.y, radius, 0, Math.PI * 2);
-      ctx.fillStyle = color;
-      ctx.fill();
-    }
-
-    // Draw axes at origin (reference point)
-    const axisLen = scale * 0.4;
-    ctx.lineWidth = 1.5;
-
-    // X axis (red)
-    ctx.strokeStyle = 'rgba(255,100,100,0.4)';
+  function drawSoccerBall(x, y, r) {
+    ctx.save();
     ctx.beginPath();
-    ctx.moveTo(refProjX, refProjY);
-    ctx.lineTo(refProjX + axisLen, refProjY);
-    ctx.stroke();
-
-    // Y axis (green)
-    ctx.strokeStyle = 'rgba(100,255,100,0.4)';
-    ctx.beginPath();
-    ctx.moveTo(refProjX, refProjY);
-    ctx.lineTo(refProjX, refProjY - axisLen);
-    ctx.stroke();
-
-    // Z axis (blue) — isometric
-    ctx.strokeStyle = 'rgba(100,150,255,0.4)';
-    ctx.beginPath();
-    ctx.moveTo(refProjX, refProjY);
-    ctx.lineTo(refProjX - axisLen * cos30, refProjY - axisLen * sin30);
-    ctx.stroke();
-
-    // Draw lines to nearest and farthest
-    if (nearIdx >= 0) {
-      const np = projPoints.find(p => p.index === nearIdx);
-      if (np) {
-        ctx.beginPath();
-        ctx.moveTo(refProjX, refProjY);
-        ctx.lineTo(np.x, np.y);
-        ctx.strokeStyle = 'rgba(93,170,255,0.6)';
-        ctx.lineWidth = 1.8;
-        ctx.setLineDash([4, 3]);
-        ctx.stroke();
-        ctx.setLineDash([]);
-
-        ctx.font = 'bold 9px DM Sans, sans-serif';
-        ctx.fillStyle = 'rgba(93,170,255,1)';
-        ctx.textAlign = 'left';
-        ctx.fillText('closest', np.x + 6, np.y - 2);
-      }
-    }
-
-    if (farIdx >= 0) {
-      const fp = projPoints.find(p => p.index === farIdx);
-      if (fp) {
-        ctx.beginPath();
-        ctx.moveTo(refProjX, refProjY);
-        ctx.lineTo(fp.x, fp.y);
-        ctx.strokeStyle = 'rgba(255,140,66,0.5)';
-        ctx.lineWidth = 1.4;
-        ctx.setLineDash([2, 4]);
-        ctx.stroke();
-        ctx.setLineDash([]);
-
-        ctx.font = 'bold 9px DM Sans, sans-serif';
-        ctx.fillStyle = 'rgba(255,140,66,1)';
-        ctx.textAlign = 'left';
-        ctx.fillText('farthest', fp.x + 6, fp.y - 2);
-      }
-    }
-
-    // Draw center (you)
-    ctx.beginPath();
-    ctx.arc(refProjX, refProjY, 7, 0, Math.PI * 2);
-    ctx.fillStyle = 'rgba(178,139,255,1)';
+    ctx.arc(x, y, r, 0, Math.PI * 2);
+    ctx.fillStyle = 'rgba(248,250,255,0.98)';
     ctx.fill();
-    ctx.strokeStyle = 'rgba(255,255,255,0.9)';
-    ctx.lineWidth = 1.5;
+    ctx.strokeStyle = 'rgba(12,16,24,0.9)';
+    ctx.lineWidth = 1;
     ctx.stroke();
-    ctx.font = 'bold 10px DM Sans, sans-serif';
-    ctx.fillStyle = '#fff';
-    ctx.textAlign = 'center';
-    ctx.fillText('you', refProjX, refProjY + 14);
+    ctx.clip();
+
+    function regularPolygon(cx, cy, radius, sides, rotation) {
+      ctx.beginPath();
+      for (let i = 0; i < sides; i++) {
+        const a = rotation + i * Math.PI * 2 / sides;
+        const px = cx + Math.cos(a) * radius;
+        const py = cy + Math.sin(a) * radius;
+        if (i === 0) ctx.moveTo(px, py); else ctx.lineTo(px, py);
+      }
+      ctx.closePath();
+    }
+
+    ctx.strokeStyle = 'rgba(16,20,30,0.72)';
+    ctx.lineWidth = 0.75;
+    ctx.fillStyle = 'rgba(14,18,26,0.92)';
+    regularPolygon(x, y, r * 0.36, 5, -Math.PI / 2);
+    ctx.fill();
+    ctx.stroke();
+
+    const patchR = r * 0.28;
+    const patchDist = r * 0.74;
+    for (let i = 0; i < 5; i++) {
+      const a = -Math.PI / 2 + i * Math.PI * 2 / 5;
+      const px = x + Math.cos(a) * patchDist;
+      const py = y + Math.sin(a) * patchDist;
+      regularPolygon(px, py, patchR, 5, a + Math.PI / 5);
+      ctx.fillStyle = 'rgba(14,18,26,0.92)';
+      ctx.fill();
+      ctx.strokeStyle = 'rgba(16,20,30,0.72)';
+      ctx.stroke();
+    }
+
+    ctx.strokeStyle = 'rgba(16,20,30,0.55)';
+    ctx.lineWidth = 0.7;
+    for (let i = 0; i < 5; i++) {
+      const a = -Math.PI / 2 + i * Math.PI * 2 / 5;
+      const sx = x + Math.cos(a) * r * 0.34;
+      const sy = y + Math.sin(a) * r * 0.34;
+      const ex = x + Math.cos(a) * r * 0.62;
+      const ey = y + Math.sin(a) * r * 0.62;
+      ctx.beginPath();
+      ctx.moveTo(sx, sy);
+      ctx.lineTo(ex, ey);
+      ctx.stroke();
+    }
+
+    ctx.strokeStyle = 'rgba(255,255,255,0.75)';
+    ctx.lineWidth = 0.5;
+    ctx.beginPath();
+    ctx.arc(x - r * 0.25, y - r * 0.25, r * 0.95, Math.PI * 1.08, Math.PI * 1.34);
+    ctx.stroke();
+    ctx.restore();
   }
 
   function drawChart() {

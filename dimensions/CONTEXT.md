@@ -18,7 +18,7 @@ Single HTML file containing all structure, styles, and JavaScript. No build step
 1. **Shell paradox** (volume concentration)
 2. **Word vectors** (king − man + woman ≈ queen)
 3. **Equatorial collapse** (surface area flattening)
-4. **Nearest-neighbor** (soccer field, distance collapse, 1D/2D/3D visualization)
+4. **Nearest-neighbor** (soccer field, distance collapse, 1D/2D visualization)
 5. **Volume-overlap** (darts, probability)
 6. **Orthogonality** (removed; was embedding capacity payoff)
 7. **Summary table** (tradeoffs side-by-side)
@@ -89,14 +89,14 @@ Formula: V_d(r) / 2^d
 ### Section 5 (Nearest-Neighbor / Soccer)
 - **Canvas**: 560×440 (2× pixel density), **dimension-specific visualizations**:
   - **d=1**: Horizontal line showing distance range (min left, max right)
-  - **d=2**: Radial 2D plot (angle by index, radius by distance)
-  - **d≥3**: **Isometric 3D projection** of first 3 dimensions
-    - Projection: screen_x = x − z·cos(30°), screen_y = y + z·sin(30°)
-    - Depth sorting (painter's algorithm)
-    - Faint XY grid plane, colored axes (red X, green Y, blue Z)
-- **Sliders** (detail-only): Dimension slider (1–300), points slider (10–200), resample button
+  - **d≥2**: 2D soccer field view
+    - Angle/bearing comes from the first two coordinates
+    - Radius from center uses the real d-dimensional distance
+    - As d increases and nearest/farthest converge, points visibly collapse toward the same distance ring
+- **Controls**: Fixed at 20 points; dimension slider (1–300) in detail mode; resample button in detail mode
 - **Buttons** (simple-only): Preset dimensions [1, 2, 3, 10, 100, 300] — **no re-randomization** on click
-  - Fixed point set stored in 300 dims; dimension change reuses same points with fewer coords
+  - Fixed 20-point set stored in 300 dims; dimension change reuses same points with fewer coords
+  - First coordinate is balanced left/right around the reference point for legible 1D and soccer-field layouts
   - Only regenerate on "Resample" or page load
 - **Highlights**: Closest (blue), farthest (orange), center (you)
 - **Charts** (detail-only): Ratio curve vs. dimension
@@ -168,9 +168,9 @@ const injectSection = (sectionId, s) => {
 
 2. **Dimension slider vs. buttons**: Simple mode uses buttons for discrete jumps (1, 2, 3, 10, 100, 300); detailed mode uses slider for fine control.
 
-3. **Fixed point set in NN section**: Same 50 points across all dimension changes (only re-randomize on explicit "Resample") so users see distances **converge**, not re-scatter.
+3. **Fixed point set in NN section**: Same 20 points across all dimension changes (only re-randomize on explicit "Resample") so users see distances **converge**, not re-scatter.
 
-4. **3D visualization for d≥3**: Isometric projection shows actual 3D geometry of first 3 coords, not a stylized representation. Helps intuition about how volume and distance behave in real high-dimensional space.
+4. **2D field for d≥2**: The soccer field keeps the visual metaphor stable across dimensions. Bearings are stylized from the first two coordinates, while radius uses the real d-dimensional distance so equidistance becomes visible.
 
 5. **Captions are detail-only**: Metaphor notes ("the circle's drawn radius is fixed...") hidden in simple mode to reduce cognitive load.
 
@@ -181,7 +181,7 @@ const injectSection = (sectionId, s) => {
 ## Future Work / Extensibility
 
 - **Section 7 (Orthogonality)**: Removed but content.js still has a placeholder. Can re-add canvas + JS if needed.
-- **3D rendering**: Could upgrade to WebGL for true 3D with rotation/zoom, but canvas 2D isometric is sufficient for current goals.
+- **3D rendering**: Removed from the nearest-neighbor section because the 2D field better communicates distance collapse. Could be re-added later as a separate optional view.
 - **Export/sharing**: Could add URL params to save/share dimension + state.
 - **Mobile: gesture controls**: Pinch/swipe on mobile for dimension changes instead of/alongside buttons.
 

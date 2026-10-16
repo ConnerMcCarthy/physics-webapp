@@ -1,0 +1,1289 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Fluid Dynamics: Wing Lift</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Exo+2:wght@200;300;400;600;700&family=DM+Sans:wght@300;400;500&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #030711;
+  --surface: rgba(255,255,255,0.03);
+  --border: rgba(255,255,255,0.07);
+  --purple: rgba(178,139,255,1);
+  --purple-dim: rgba(178,139,255,0.35);
+  --blue: rgba(93,170,255,1);
+  --blue-dim: rgba(93,170,255,0.28);
+  --text: rgba(255,255,255,0.88);
+  --text-muted: rgba(255,255,255,0.48);
+  --text-faint: rgba(255,255,255,0.22);
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+html, body {
+  min-height: 100%;
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'DM Sans', sans-serif;
+  overflow-x: hidden;
+}
+
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background:
+    radial-gradient(ellipse 80% 50% at 20% 10%, rgba(93,170,255,0.055) 0%, transparent 60%),
+    radial-gradient(ellipse 60% 40% at 80% 80%, rgba(178,139,255,0.06) 0%, transparent 55%);
+  pointer-events: none;
+  z-index: 0;
+}
+
+.page {
+  position: relative;
+  z-index: 1;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  padding: 40px 32px;
+}
+
+.header {
+  text-align: center;
+  margin-bottom: 40px;
+}
+
+.header-label {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  letter-spacing: 0.32em;
+  text-transform: uppercase;
+  color: var(--blue);
+  opacity: 0.75;
+  margin-bottom: 12px;
+}
+
+.header-title {
+  font-family: 'Exo 2', sans-serif;
+  font-weight: 700;
+  font-size: clamp(28px, 5vw, 48px);
+  letter-spacing: -0.03em;
+  background: linear-gradient(135deg, #fff 30%, rgba(178,139,255,0.9) 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  margin-bottom: 8px;
+}
+
+.header-sub {
+  font-size: 14px;
+  color: var(--text-muted);
+}
+
+.container {
+  display: grid;
+  grid-template-columns: 1fr 320px;
+  gap: 28px;
+  width: 100%;
+  max-width: 1400px;
+  margin: 0 auto;
+  flex: 1;
+}
+
+.canvas-wrapper {
+  position: relative;
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  background: var(--surface);
+  overflow: hidden;
+  min-height: 600px;
+}
+
+canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+  cursor: grab;
+  touch-action: none;
+  user-select: none;
+}
+
+canvas.dragging { cursor: grabbing; }
+
+.canvas-label {
+  position: absolute;
+  top: 16px;
+  left: 16px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--purple);
+  opacity: 0.6;
+  pointer-events: none;
+}
+
+.pressure-legend {
+  position: absolute;
+  top: 38px;
+  left: 16px;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 9px;
+  color: var(--text-muted);
+  pointer-events: none;
+}
+
+.pressure-gradient {
+  width: 92px;
+  height: 7px;
+  border-radius: 2px;
+  background: linear-gradient(90deg, rgb(49,184,255) 0%, rgb(215,220,232) 50%, rgb(255,95,87) 100%);
+  border: 1px solid rgba(255,255,255,0.14);
+}
+
+.canvas-stats {
+  position: absolute;
+  bottom: 16px;
+  right: 16px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  color: var(--text-muted);
+  text-align: right;
+  pointer-events: none;
+  background: rgba(0,0,0,0.4);
+  padding: 8px 12px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+}
+
+.stat-row {
+  line-height: 1.6;
+}
+
+.stat-label { color: var(--text-faint); }
+.stat-value { color: var(--blue); font-weight: 500; }
+
+.lift-gauge {
+  position: relative;
+  width: 38px;
+  height: 260px;
+  border-radius: 5px;
+  overflow: hidden;
+  background: rgba(255,255,255,0.16);
+  border: 2px solid rgba(255,255,255,0.42);
+  box-shadow: inset 0 0 14px rgba(0,0,0,0.55), 0 4px 18px rgba(0,0,0,0.35);
+}
+
+.lift-fill {
+  position: absolute;
+  bottom: 0;
+  left: 2px;
+  right: 2px;
+  height: 0;
+  background: #5daaff;
+  box-shadow: 0 0 16px rgba(93,170,255,0.8);
+  transition: height 120ms ease, background 120ms ease;
+}
+
+.lift-gauge-wrap {
+  position: absolute;
+  top: 50%;
+  right: 18px;
+  transform: translateY(-50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 7px;
+  font-family: 'JetBrains Mono', monospace;
+  pointer-events: none;
+  z-index: 5;
+}
+
+.lift-gauge-label {
+  font-size: 9px;
+  letter-spacing: 0.16em;
+  color: var(--purple);
+  text-transform: uppercase;
+}
+
+.lift-readout {
+  width: 72px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 9px;
+  color: var(--blue);
+  text-align: center;
+}
+
+.controls {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.control-group {
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--surface);
+  padding: 16px;
+}
+
+.control-label {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 9px;
+  letter-spacing: 0.24em;
+  text-transform: uppercase;
+  color: var(--purple);
+  opacity: 0.7;
+  margin-bottom: 8px;
+  display: block;
+}
+
+.slider-container {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.slider-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.slider-name {
+  font-size: 12px;
+  color: var(--text);
+}
+
+.slider-value {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  color: var(--blue);
+  font-weight: 500;
+}
+
+input[type="range"] {
+  width: 100%;
+  height: 5px;
+  border-radius: 3px;
+  background: linear-gradient(90deg, var(--purple-dim), var(--blue-dim));
+  outline: none;
+  -webkit-appearance: none;
+  cursor: pointer;
+}
+
+input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: var(--purple);
+  cursor: pointer;
+  box-shadow: 0 0 8px rgba(178,139,255,0.5);
+}
+
+input[type="range"]::-moz-range-thumb {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: var(--purple);
+  cursor: pointer;
+  border: none;
+  box-shadow: 0 0 8px rgba(178,139,255,0.5);
+}
+
+select {
+  width: 100%;
+  padding: 8px 12px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: rgba(0,0,0,0.3);
+  color: var(--text);
+  font-family: 'DM Sans', sans-serif;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+select option {
+  background: var(--bg);
+  color: var(--text);
+}
+
+.button-group {
+  display: flex;
+  gap: 8px;
+}
+
+button {
+  flex: 1;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: rgba(255,255,255,0.05);
+  color: var(--text);
+  font-family: 'DM Sans', sans-serif;
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+button:hover {
+  background: rgba(255,255,255,0.08);
+  border-color: var(--purple-dim);
+  color: var(--purple);
+}
+
+button.active {
+  background: var(--purple);
+  color: var(--bg);
+  border-color: var(--purple);
+}
+
+.info-box {
+  border: 1px solid var(--blue-dim);
+  border-left: 3px solid var(--blue);
+  border-radius: 8px;
+  background: rgba(93,170,255,0.05);
+  padding: 12px;
+  font-size: 11px;
+  line-height: 1.6;
+  color: var(--text-muted);
+}
+
+.info-box strong { color: var(--blue); }
+
+.nav-link {
+  display: inline-block;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--purple);
+  text-decoration: none;
+  transition: color 0.2s;
+  margin-top: 20px;
+}
+
+.nav-link:hover { color: var(--blue); }
+
+@media (min-width: 1025px) {
+  .header-label { font-size: 21px; }
+  .header-title { font-size: 63px; }
+  .header-sub { font-size: 23px; }
+  .canvas-label { font-size: 21px; }
+  .pressure-legend { font-size: 20px; }
+  .canvas-stats { font-size: 20px; }
+  .stat-label { font-size: 21px; }
+  .lift-gauge-label { font-size: 20px; }
+  .lift-readout { font-size: 18px; }
+  .control-label { font-size: 20px; }
+  .slider-name { font-size: 22px; }
+  .slider-value { font-size: 20px; }
+  select { font-size: 21px; padding: 11px 12px; }
+  button { font-size: 21px; }
+  .info-box { font-size: 20px; }
+  .nav-link { font-size: 19px; }
+}
+
+@media (max-width: 1024px) {
+  .container {
+    grid-template-columns: 1fr;
+  }
+
+  .controls {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 16px;
+  }
+
+  .control-group {
+    padding: 12px;
+  }
+}
+
+@media (min-width: 641px) and (max-width: 1024px) {
+  .header-label { font-size: 16px; }
+  .header-title { font-size: 50px; }
+  .header-sub { font-size: 19px; }
+  .canvas-label { font-size: 16px; }
+  .pressure-legend { font-size: 14px; }
+  .canvas-stats { font-size: 16px; }
+  .stat-label { font-size: 16px; }
+  .lift-gauge-label { font-size: 15px; }
+  .lift-readout { font-size: 14px; }
+  .control-label { font-size: 16px; }
+  .slider-name { font-size: 18px; }
+  .slider-value { font-size: 16px; }
+  select { font-size: 17px; padding: 10px 12px; }
+  button { font-size: 17px; }
+  .info-box { font-size: 16px; }
+  .nav-link { font-size: 15px; }
+}
+
+@media (max-width: 640px) {
+  .page { padding: 24px 16px; }
+
+  .header { margin-bottom: 24px; }
+
+  .container {
+    gap: 16px;
+  }
+
+  .canvas-wrapper { min-height: 400px; }
+
+  .controls {
+    grid-template-columns: 1fr;
+  }
+
+  .slider-value { font-size: 10px; }
+}
+</style>
+</head>
+<body>
+
+<div class="page">
+  <div class="header">
+    <div class="header-label">Fluid Mechanics</div>
+    <h1 class="header-title">Wing Lift</h1>
+    <p class="header-sub">Potential flow around an airfoil</p>
+  </div>
+
+  <div class="container">
+    <div class="canvas-wrapper">
+      <canvas id="flowCanvas"></canvas>
+      <div class="canvas-label">Potential Flow 2D</div>
+      <div class="pressure-legend">
+        <span>LOW</span><span class="pressure-gradient"></span><span>HIGH PRESSURE</span>
+      </div>
+      <div class="lift-gauge-wrap">
+        <span class="lift-gauge-label">Lift</span>
+        <div class="lift-gauge" aria-label="Current lift">
+          <div class="lift-fill" id="liftFill"></div>
+        </div>
+        <span class="lift-readout" id="liftReadout">No lift</span>
+      </div>
+      <div class="canvas-stats">
+        <div class="stat-row"><span class="stat-label">Lift Coeff:</span> <span class="stat-value" id="clValue">0.00</span></div>
+        <div class="stat-row"><span class="stat-label">Drag Coeff:</span> <span class="stat-value" id="cdValue">0.00</span></div>
+        <div class="stat-row"><span class="stat-label">Speed:</span> <span class="stat-value" id="speedValue">1.0x</span></div>
+      </div>
+    </div>
+
+    <div class="controls">
+      <div class="control-group">
+        <label class="control-label">Angle of Attack</label>
+        <div class="slider-container">
+          <div class="slider-header">
+            <span class="slider-name">AOA</span>
+            <span class="slider-value" id="aoaValue">0°</span>
+          </div>
+          <input type="range" id="aoaSlider" min="-15" max="25" value="0" step="1">
+        </div>
+      </div>
+
+      <div class="control-group">
+        <label class="control-label">Airspeed</label>
+        <div class="slider-container">
+          <div class="slider-header">
+            <span class="slider-name">Velocity</span>
+            <span class="slider-value" id="speedDisplay">1.0x</span>
+          </div>
+          <input type="range" id="speedSlider" min="0.3" max="2" value="1" step="0.1">
+        </div>
+      </div>
+
+      <div class="control-group">
+        <label class="control-label">Wing Shape</label>
+        <select id="wingShape">
+          <option value="naca2412">Standard aircraft wing</option>
+          <option value="naca0012">Symmetrical aerobatic wing</option>
+          <option value="naca4412">Curved high-lift wing</option>
+          <option value="naca6412">Extra-curved high-lift wing</option>
+        </select>
+      </div>
+
+      <div class="control-group">
+        <label class="control-label">Animation</label>
+        <div class="button-group">
+          <button id="playBtn" class="active">Play</button>
+          <button id="resetBtn">Reset</button>
+        </div>
+      </div>
+
+      <div class="info-box">
+        <strong>Potential Flow:</strong> Fast, inviscid approximation of airflow. Shows how circulation around a wing creates lift via the Kutta-Joukowski theorem.
+      </div>
+
+      <a href="/fluids/why" class="nav-link">Learn More →</a>
+    </div>
+  </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  const canvas = document.getElementById('flowCanvas');
+  if (!canvas) return;
+
+  const ctx = canvas.getContext('2d');
+  if (!ctx) return;
+
+  // Clamp value to safe range
+  const clamp = (val, min, max) => Math.max(min, Math.min(max, val));
+
+  // Safe number check
+  const isSafe = (n) => typeof n === 'number' && isFinite(n);
+
+  // State
+  let state = {
+    aoa: 0,
+    speed: 1,
+    wingShape: 'naca2412',
+    isPlaying: true,
+    t: 0,
+    particles: [],
+    cl: 0,
+    cd: 0,
+    isDraggingWing: false,
+    dragStartPointerAngle: 0,
+    dragStartAoa: 0
+  };
+
+  const WING_AERODYNAMICS = {
+    naca0012: { zeroLiftAoa: 0,  stallAoa: 14, maxCl: 1.25, cd0: 0.009, inducedDrag: 0.010 },
+    naca2412: { zeroLiftAoa: -2, stallAoa: 15, maxCl: 1.40, cd0: 0.010, inducedDrag: 0.011 },
+    naca4412: { zeroLiftAoa: -4, stallAoa: 16, maxCl: 1.55, cd0: 0.012, inducedDrag: 0.012 },
+    naca6412: { zeroLiftAoa: -6, stallAoa: 17, maxCl: 1.65, cd0: 0.015, inducedDrag: 0.014 }
+  };
+
+  let W = 800, H = 600;
+
+  // Canvas sizing
+  function resizeCanvas() {
+    const rect = canvas.parentElement.getBoundingClientRect();
+    if (rect.width > 100 && rect.height > 100) {
+      W = rect.width;
+      H = rect.height;
+      canvas.width = W;
+      canvas.height = H;
+    }
+  }
+
+  resizeCanvas();
+  window.addEventListener('resize', resizeCanvas);
+
+  // ════════════════════════════════════════════════════════════════════════════════
+  // AIRFOIL GENERATION (NACA 4-digit)
+  // ════════════════════════════════════════════════════════════════════════════════
+
+  function generateNACAProfile(code, numPoints = 80) {
+    const digits = String(code).replace(/^naca/i, '');
+    const m = parseInt(digits[0], 10) / 100;
+    const p = parseInt(digits[1], 10) / 10;
+    const t = parseInt(digits.slice(2), 10) / 100;
+
+    const points = [];
+
+    for (let i = 0; i <= numPoints; i++) {
+      const x = i / numPoints;
+
+      const yt = 5 * t * (
+        0.2969 * Math.sqrt(Math.max(0, x)) -
+        0.1260 * x -
+        0.3516 * x * x +
+        0.2843 * x * x * x -
+        0.1015 * x * x * x * x
+      );
+
+      let yc = 0, dyc_dx = 0;
+      if (x <= p && p > 0) {
+        yc = m / (p * p) * (2 * p * x - x * x);
+        dyc_dx = m / (p * p) * (2 * p - 2 * x);
+      } else if (x > p && p > 0) {
+        yc = m / ((1 - p) * (1 - p)) * ((1 - 2 * p) + 2 * p * x - x * x);
+        dyc_dx = m / ((1 - p) * (1 - p)) * (2 * p - 2 * x);
+      }
+
+      const theta = Math.atan(dyc_dx);
+      const xu = x - yt * Math.sin(theta);
+      const yu = yc + yt * Math.cos(theta);
+
+      points.push({ x: clamp(xu, -1, 2), y: clamp(yu, -0.5, 0.5) });
+    }
+
+    for (let i = numPoints - 1; i >= 0; i--) {
+      const x = i / numPoints;
+      const yt = 5 * t * (
+        0.2969 * Math.sqrt(Math.max(0, x)) -
+        0.1260 * x -
+        0.3516 * x * x +
+        0.2843 * x * x * x -
+        0.1015 * x * x * x * x
+      );
+
+      let yc = 0, dyc_dx = 0;
+      if (x <= p && p > 0) {
+        yc = m / (p * p) * (2 * p * x - x * x);
+        dyc_dx = m / (p * p) * (2 * p - 2 * x);
+      } else if (x > p && p > 0) {
+        yc = m / ((1 - p) * (1 - p)) * ((1 - 2 * p) + 2 * p * x - x * x);
+        dyc_dx = m / ((1 - p) * (1 - p)) * (2 * p - 2 * x);
+      }
+
+      const theta = Math.atan(dyc_dx);
+      const xl = x + yt * Math.sin(theta);
+      const yl = yc - yt * Math.cos(theta);
+
+      points.push({ x: clamp(xl, -1, 2), y: clamp(yl, -0.5, 0.5) });
+    }
+
+    return points;
+  }
+
+  // ════════════════════════════════════════════════════════════════════════════════
+  // POTENTIAL FLOW SOLVER
+  // ════════════════════════════════════════════════════════════════════════════════
+
+  let flowSolution = null;
+  let flowSolutionKey = '';
+
+  function panelVelocity(panel, x, y, vortex = false) {
+    const dx = x - panel.x1;
+    const dy = y - panel.y1;
+    const localX = dx * panel.tx + dy * panel.ty;
+    const localY = -dx * panel.ty + dy * panel.tx;
+    const endX = localX - panel.length;
+    const r1Sq = Math.max(1e-10, localX * localX + localY * localY);
+    const r2Sq = Math.max(1e-10, endX * endX + localY * localY);
+    const sourceU = Math.log(r1Sq / r2Sq) / (4 * Math.PI);
+    const sourceV = (Math.atan2(localY, endX) - Math.atan2(localY, localX)) / (2 * Math.PI);
+    const localU = vortex ? -sourceV : sourceU;
+    const localV = vortex ? sourceU : sourceV;
+
+    return {
+      u: localU * panel.tx - localV * panel.ty,
+      v: localU * panel.ty + localV * panel.tx
+    };
+  }
+
+  function solveLinearSystem(matrix, rhs) {
+    const n = rhs.length;
+    const a = matrix.map((row, i) => row.concat(rhs[i]));
+
+    for (let col = 0; col < n; col++) {
+      let pivot = col;
+      for (let row = col + 1; row < n; row++) {
+        if (Math.abs(a[row][col]) > Math.abs(a[pivot][col])) pivot = row;
+      }
+      [a[col], a[pivot]] = [a[pivot], a[col]];
+      const divisor = a[col][col];
+      if (Math.abs(divisor) < 1e-10) return new Array(n).fill(0);
+
+      for (let row = col + 1; row < n; row++) {
+        const factor = a[row][col] / divisor;
+        for (let k = col; k <= n; k++) a[row][k] -= factor * a[col][k];
+      }
+    }
+
+    const result = new Array(n).fill(0);
+    for (let row = n - 1; row >= 0; row--) {
+      let value = a[row][n];
+      for (let col = row + 1; col < n; col++) value -= a[row][col] * result[col];
+      result[row] = value / a[row][row];
+    }
+    return result;
+  }
+
+  function buildFlowSolution(wingShape, aoa, circulation) {
+    const profile = generateNACAProfile(wingShape, 28);
+    const panels = [];
+
+    for (let i = 0; i < profile.length - 1; i++) {
+      const a = profile[i];
+      const b = profile[i + 1];
+      const dx = b.x - a.x;
+      const dy = b.y - a.y;
+      const length = Math.hypot(dx, dy);
+      if (length < 1e-6) continue;
+      const tx = dx / length;
+      const ty = dy / length;
+      panels.push({
+        x1: a.x - 0.5, y1: a.y,
+        x2: b.x - 0.5, y2: b.y,
+        cx: (a.x + b.x) / 2 - 0.5,
+        cy: (a.y + b.y) / 2,
+        length, tx, ty,
+        nx: -ty, ny: tx
+      });
+    }
+
+    const angle = aoa * Math.PI / 180;
+    const freeU = Math.cos(angle);
+    const freeV = Math.sin(angle);
+    const perimeter = panels.reduce((sum, panel) => sum + panel.length, 0);
+    // Clockwise circulation accelerates flow over the upper surface for positive lift.
+    const vortexSheetStrength = -(2 * Math.PI * circulation) / perimeter;
+    const matrix = panels.map(() => new Array(panels.length).fill(0));
+    const rhs = new Array(panels.length).fill(0);
+
+    for (let i = 0; i < panels.length; i++) {
+      const target = panels[i];
+      let vortexU = 0;
+      let vortexV = 0;
+      for (let j = 0; j < panels.length; j++) {
+        if (i === j) {
+          matrix[i][j] = 0.5;
+        } else {
+          const sourceVelocity = panelVelocity(panels[j], target.cx, target.cy);
+          matrix[i][j] = sourceVelocity.u * target.nx + sourceVelocity.v * target.ny;
+        }
+        const vortexVelocity = panelVelocity(panels[j], target.cx, target.cy, true);
+        vortexU += vortexVelocity.u;
+        vortexV += vortexVelocity.v;
+      }
+      rhs[i] = -(freeU * target.nx + freeV * target.ny +
+        vortexSheetStrength * (vortexU * target.nx + vortexV * target.ny));
+    }
+
+    return {
+      panels,
+      profile: panels.map(panel => ({ x: panel.x1, y: panel.y1 })),
+      sourceStrengths: solveLinearSystem(matrix, rhs),
+      vortexSheetStrength,
+      freeU,
+      freeV,
+      angle
+    };
+  }
+
+  function pointInsideProfile(x, y, profile) {
+    let inside = false;
+    for (let i = 0, j = profile.length - 1; i < profile.length; j = i++) {
+      const a = profile[i];
+      const b = profile[j];
+      if ((a.y > y) !== (b.y > y) && x < (b.x - a.x) * (y - a.y) / (b.y - a.y) + a.x) {
+        inside = !inside;
+      }
+    }
+    return inside;
+  }
+
+  function computeVelocityField(x, y) {
+    if (!flowSolution) return { u: 1, v: 0, p: 0 };
+    const c = Math.cos(flowSolution.angle);
+    const s = Math.sin(flowSolution.angle);
+    const bodyX = c * x - s * y;
+    const bodyY = s * x + c * y;
+
+    if (pointInsideProfile(bodyX, bodyY, flowSolution.profile)) {
+      return { u: 0, v: 0, p: 1, inside: true };
+    }
+
+    let bodyU = flowSolution.freeU;
+    let bodyV = flowSolution.freeV;
+    let vortexU = 0;
+    let vortexV = 0;
+
+    for (let i = 0; i < flowSolution.panels.length; i++) {
+      const sourceVelocity = panelVelocity(flowSolution.panels[i], bodyX, bodyY);
+      bodyU += sourceVelocity.u * flowSolution.sourceStrengths[i];
+      bodyV += sourceVelocity.v * flowSolution.sourceStrengths[i];
+      const vortexVelocity = panelVelocity(flowSolution.panels[i], bodyX, bodyY, true);
+      vortexU += vortexVelocity.u;
+      vortexV += vortexVelocity.v;
+    }
+    bodyU += vortexU * flowSolution.vortexSheetStrength;
+    bodyV += vortexV * flowSolution.vortexSheetStrength;
+
+    let u = c * bodyU + s * bodyV;
+    let v = -s * bodyU + c * bodyV;
+    u = clamp(u, -3, 3);
+    v = clamp(v, -3, 3);
+    const speedSq = u * u + v * v;
+    return { u, v, p: 1 - speedSq, inside: false };
+  }
+
+  function computeAerodynamics(aoa, wingShape) {
+    const wing = WING_AERODYNAMICS[wingShape] || WING_AERODYNAMICS.naca2412;
+    const effectiveAoa = aoa - wing.zeroLiftAoa;
+    const direction = Math.sign(effectiveAoa);
+    const absEffectiveAoa = Math.abs(effectiveAoa);
+    const liftSlopePerDegree = 2 * Math.PI * Math.PI / 180;
+    const linearCl = liftSlopePerDegree * effectiveAoa;
+
+    let cl;
+    if (absEffectiveAoa <= wing.stallAoa) {
+      cl = clamp(linearCl, -wing.maxCl, wing.maxCl);
+    } else {
+      const clAtStall = Math.min(wing.maxCl, liftSlopePerDegree * wing.stallAoa);
+      const stallLoss = Math.max(0.45, 1 - (absEffectiveAoa - wing.stallAoa) * 0.035);
+      cl = direction * clAtStall * stallLoss;
+    }
+
+    const stallAmount = Math.max(0, absEffectiveAoa - wing.stallAoa);
+    const cd = wing.cd0 + wing.inducedDrag * cl * cl + 0.0018 * stallAmount * stallAmount;
+
+    // computeVelocityField uses vortex strength Gamma/(2*pi), so Cl = 4*pi*strength.
+    const circulation = cl / (4 * Math.PI);
+    return { cl, cd, circulation };
+  }
+
+  // ════════════════════════════════════════════════════════════════════════════════
+  // PARTICLE SYSTEM
+  // ════════════════════════════════════════════════════════════════════════════════
+
+  class Particle {
+    constructor(x, y) {
+      this.x = x;
+      this.y = y;
+      this.trail = [];
+      this.age = 0;
+      this.maxAge = 200;
+    }
+
+    update(dt, aoa, circulation, speed) {
+      // Clamp position
+      this.x = clamp(this.x, -3, 3);
+      this.y = clamp(this.y, -2, 2);
+
+      const vel = computeVelocityField(this.x, this.y, aoa, circulation);
+      if (vel.inside) {
+        this.age = this.maxAge;
+        return;
+      }
+
+      // RK4 integration
+      const k1u = vel.u * speed;
+      const k1v = vel.v * speed;
+
+      const vel2 = computeVelocityField(this.x + k1u * dt * 0.5, this.y + k1v * dt * 0.5, aoa, circulation);
+      const k2u = vel2.u * speed;
+      const k2v = vel2.v * speed;
+
+      const vel3 = computeVelocityField(this.x + k2u * dt * 0.5, this.y + k2v * dt * 0.5, aoa, circulation);
+      const k3u = vel3.u * speed;
+      const k3v = vel3.v * speed;
+
+      const vel4 = computeVelocityField(this.x + k3u * dt, this.y + k3v * dt, aoa, circulation);
+      const k4u = vel4.u * speed;
+      const k4v = vel4.v * speed;
+
+      const dx = (k1u + 2 * k2u + 2 * k3u + k4u) * dt / 6;
+      const dy = (k1v + 2 * k2v + 2 * k3v + k4v) * dt / 6;
+
+      // Check for NaN
+      if (!isSafe(dx) || !isSafe(dy)) {
+        this.age = this.maxAge;
+        return;
+      }
+
+      this.x += dx;
+      this.y += dy;
+
+      // Keep in bounds
+      if (Math.abs(this.x) > 3 || Math.abs(this.y) > 2) {
+        this.age = this.maxAge;
+        return;
+      }
+
+      this.trail.push({ x: this.x, y: this.y });
+      if (this.trail.length > 20) this.trail.shift();
+
+      this.age++;
+    }
+
+    isDead() {
+      return this.age > this.maxAge;
+    }
+  }
+
+  function initParticles() {
+    state.particles = [];
+    for (let y = 0.2; y < 0.8; y += 0.08) {
+      state.particles.push(new Particle(-0.8, y - 0.5));
+    }
+  }
+
+  // ════════════════════════════════════════════════════════════════════════════════
+  // RENDERING
+  // ════════════════════════════════════════════════════════════════════════════════
+
+  function pressureColor(cp) {
+    const neutral = [215, 220, 232];
+    const low = [49, 184, 255];
+    const high = [255, 95, 87];
+    const target = cp < 0 ? low : high;
+    const amount = cp < 0 ? clamp(-cp / 1.5, 0, 1) : clamp(cp, 0, 1);
+    const rgb = neutral.map((channel, i) => Math.round(channel + (target[i] - channel) * amount));
+    return `rgb(${rgb[0]},${rgb[1]},${rgb[2]})`;
+  }
+
+  function drawPressureAreas(scale, angle) {
+    if (!flowSolution) return;
+    const c = Math.cos(angle);
+    const s = Math.sin(angle);
+    const samples = flowSolution.panels.map(panel => {
+      const sampleX = panel.cx + panel.nx * 0.008;
+      const sampleY = panel.cy + panel.ny * 0.008;
+      const worldX = c * sampleX + s * sampleY;
+      const worldY = -s * sampleX + c * sampleY;
+      const velocity = computeVelocityField(worldX, worldY);
+      return { panel, cp: velocity.p };
+    });
+
+    const half = Math.floor(flowSolution.panels.length / 2);
+    const upperPanels = flowSolution.panels.slice(0, half);
+    const lowerPanels = flowSolution.panels.slice(half);
+    const upperPoints = upperPanels.map(panel => ({ x: panel.x1, y: panel.y1 }));
+    upperPoints.push({ x: upperPanels.at(-1).x2, y: upperPanels.at(-1).y2 });
+    const lowerPoints = lowerPanels.map(panel => ({ x: panel.x1, y: panel.y1 }));
+    lowerPoints.push({ x: lowerPanels.at(-1).x2, y: lowerPanels.at(-1).y2 });
+    lowerPoints.reverse();
+    const camberPoints = upperPoints.map((point, i) => ({
+      x: (point.x + lowerPoints[i].x) / 2,
+      y: (point.y + lowerPoints[i].y) / 2
+    }));
+
+    function surfaceGradient(surfaceSamples) {
+      const gradient = ctx.createLinearGradient(-0.5 * scale, 0, 0.5 * scale, 0);
+      const sorted = [...surfaceSamples].sort((a, b) => a.panel.cx - b.panel.cx);
+      sorted.forEach(({ panel, cp }, i) => {
+        const position = clamp(panel.cx + 0.5, 0, 1);
+        const previous = i > 0 ? clamp(sorted[i - 1].panel.cx + 0.5, 0, 1) : -1;
+        gradient.addColorStop(Math.max(position, previous), pressureColor(cp));
+      });
+      return gradient;
+    }
+
+    function fillSurface(surfacePoints, centerPoints, fillStyle) {
+      ctx.fillStyle = fillStyle;
+      ctx.beginPath();
+      surfacePoints.forEach((point, i) => {
+        const x = point.x * scale;
+        const y = -point.y * scale;
+        if (i === 0) ctx.moveTo(x, y);
+        else ctx.lineTo(x, y);
+      });
+      for (let i = centerPoints.length - 1; i >= 0; i--) {
+        ctx.lineTo(centerPoints[i].x * scale, -centerPoints[i].y * scale);
+      }
+      ctx.closePath();
+      ctx.fill();
+    }
+
+    ctx.save();
+    fillSurface(upperPoints, camberPoints, surfaceGradient(samples.slice(0, half)));
+    fillSurface(lowerPoints, camberPoints, surfaceGradient(samples.slice(half)));
+    ctx.restore();
+  }
+
+  function drawWing(profile, scale, offsetX, offsetY, angle) {
+    if (!profile || profile.length === 0) return;
+
+    ctx.save();
+    ctx.translate(offsetX, offsetY);
+    ctx.rotate(angle);
+
+    // Draw fill
+    ctx.fillStyle = 'rgba(93,170,255,0.4)';
+    ctx.beginPath();
+
+    let hasPoints = false;
+    for (let i = 0; i < profile.length; i++) {
+      const pt = profile[i];
+      const px = (pt.x - 0.5) * scale;
+      const py = -pt.y * scale;
+
+      if (!isSafe(px) || !isSafe(py)) continue;
+
+      if (!hasPoints) {
+        ctx.moveTo(px, py);
+        hasPoints = true;
+      } else {
+        ctx.lineTo(px, py);
+      }
+    }
+
+    if (hasPoints) {
+      ctx.closePath();
+      ctx.fill();
+    }
+
+    drawPressureAreas(scale, angle);
+
+    // Draw outline - much thicker and brighter
+    ctx.strokeStyle = 'rgba(178,139,255,1)';
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+
+    hasPoints = false;
+    for (let i = 0; i < profile.length; i++) {
+      const pt = profile[i];
+      const px = (pt.x - 0.5) * scale;
+      const py = -pt.y * scale;
+
+      if (!isSafe(px) || !isSafe(py)) continue;
+
+      if (!hasPoints) {
+        ctx.moveTo(px, py);
+        hasPoints = true;
+      } else {
+        ctx.lineTo(px, py);
+      }
+    }
+
+    if (hasPoints) {
+      ctx.closePath();
+      ctx.stroke();
+    }
+
+    ctx.restore();
+  }
+
+  function drawStreamlines(profile, scale, offsetX, offsetY, aoa, circulation) {
+    for (let streamY = 0.1; streamY < 0.9; streamY += 0.1) {
+      ctx.strokeStyle = `rgba(93,170,255,${0.15 + streamY * 0.1})`;
+      ctx.lineWidth = 0.5;
+      ctx.beginPath();
+
+      let x = -0.8;
+      let y = streamY - 0.5;
+      const step = 0.02;
+
+      ctx.moveTo(offsetX + x * W * 0.4, offsetY - y * H * 0.6);
+
+      for (let iter = 0; iter < 100; iter++) {
+        if (x > 1.5) break;
+
+        const vel = computeVelocityField(x, y);
+        const speed = Math.sqrt(vel.u * vel.u + vel.v * vel.v);
+
+        if (vel.inside || speed < 0.01) break;
+
+        x += step * vel.u / (speed + 0.1);
+        y += step * vel.v / (speed + 0.1);
+
+        if (!isSafe(x) || !isSafe(y)) break;
+
+        const px = offsetX + x * W * 0.4;
+        const py = offsetY - y * H * 0.6;
+
+        ctx.lineTo(px, py);
+      }
+
+      ctx.stroke();
+    }
+  }
+
+  function animate() {
+    try {
+      if (W === 0 || H === 0) {
+        requestAnimationFrame(animate);
+        return;
+      }
+
+      // Clear
+      ctx.fillStyle = 'rgba(3,7,17,0.8)';
+      ctx.fillRect(0, 0, W, H);
+
+      // Grid
+      ctx.strokeStyle = 'rgba(255,255,255,0.02)';
+      ctx.lineWidth = 0.5;
+      for (let x = 0; x < W; x += 80) {
+        ctx.beginPath();
+        ctx.moveTo(x, 0);
+        ctx.lineTo(x, H);
+        ctx.stroke();
+      }
+      for (let y = 0; y < H; y += 80) {
+        ctx.beginPath();
+        ctx.moveTo(0, y);
+        ctx.lineTo(W, y);
+        ctx.stroke();
+      }
+
+      const offsetX = W * 0.5;
+      const offsetY = H * 0.5;
+      const wingScale = 350;
+
+      const profile = generateNACAProfile(state.wingShape);
+      const aero = computeAerodynamics(state.aoa, state.wingShape);
+      const circulation = aero.circulation;
+      const nextFlowKey = `${state.wingShape}:${state.aoa}:${circulation.toFixed(6)}`;
+      if (flowSolutionKey !== nextFlowKey) {
+        flowSolution = buildFlowSolution(state.wingShape, state.aoa, circulation);
+        flowSolutionKey = nextFlowKey;
+      }
+
+      // Debug: Draw crosshair at center
+      ctx.strokeStyle = 'rgba(255,255,255,0.1)';
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(offsetX - 50, offsetY);
+      ctx.lineTo(offsetX + 50, offsetY);
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.moveTo(offsetX, offsetY - 50);
+      ctx.lineTo(offsetX, offsetY + 50);
+      ctx.stroke();
+
+      drawStreamlines(profile, wingScale, offsetX, offsetY, state.aoa, circulation);
+      drawWing(profile, wingScale, offsetX, offsetY, state.aoa * Math.PI / 180);
+
+      if (state.isPlaying) {
+        state.t += 0.016;
+
+        if (Math.random() < 0.15) {
+          const y = Math.random() * 0.6 - 0.3;
+          state.particles.push(new Particle(-0.8, y));
+        }
+
+        for (let p of state.particles) {
+          p.update(0.016, state.aoa, circulation, state.speed);
+        }
+
+        state.particles = state.particles.filter(p => !p.isDead());
+      }
+
+      // Draw particles
+      for (let p of state.particles) {
+        const alpha = 0.3 * (1 - p.age / p.maxAge);
+        ctx.strokeStyle = `rgba(178,139,255,${alpha})`;
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+
+        for (let i = 0; i < p.trail.length; i++) {
+          const pt = p.trail[i];
+          if (!isSafe(pt.x) || !isSafe(pt.y)) continue;
+
+          const px = offsetX + pt.x * W * 0.4;
+          const py = offsetY - pt.y * H * 0.6;
+
+          if (i === 0) ctx.moveTo(px, py);
+          else ctx.lineTo(px, py);
+        }
+        ctx.stroke();
+
+        if (isSafe(p.x) && isSafe(p.y)) {
+          const px = offsetX + p.x * W * 0.4;
+          const py = offsetY - p.y * H * 0.6;
+          ctx.fillStyle = `rgba(178,139,255,${0.8 * (1 - p.age / p.maxAge)})`;
+          ctx.beginPath();
+          ctx.arc(px, py, 2, 0, Math.PI * 2);
+          ctx.fill();
+        }
+      }
+
+      state.cl = aero.cl;
+      state.cd = aero.cd;
+
+      document.getElementById('clValue').textContent = state.cl.toFixed(2);
+      document.getElementById('cdValue').textContent = state.cd.toFixed(3);
+
+      const liftPercent = Math.min(100, Math.round(Math.abs(state.cl) / 1.65 * 100));
+      const liftFill = document.getElementById('liftFill');
+      const liftReadout = document.getElementById('liftReadout');
+      liftFill.style.height = `${liftPercent}%`;
+      liftFill.style.background = state.cl < 0 ? '#ff8a65' : '#5daaff';
+      liftReadout.textContent = liftPercent < 1
+        ? 'No lift'
+        : state.cl < 0 ? 'Down' : 'Up';
+      liftFill.parentElement.setAttribute('aria-valuenow', String(Math.round(state.cl * 100) / 100));
+
+      requestAnimationFrame(animate);
+    } catch (error) {
+      console.error('Animation error:', error);
+      requestAnimationFrame(animate);
+    }
+  }
+
+  // ════════════════════════════════════════════════════════════════════════════════
+  // CONTROLS
+  // ════════════════════════════════════════════════════════════════════════════════
+
+  function pointerAngleFromCenter(event) {
+    const rect = canvas.getBoundingClientRect();
+    return Math.atan2(
+      event.clientY - (rect.top + rect.height / 2),
+      event.clientX - (rect.left + rect.width / 2)
+    );
+  }
+
+  function updateAoa(value) {
+    state.aoa = clamp(value, -15, 25);
+    document.getElementById('aoaSlider').value = state.aoa;
+    document.getElementById('aoaValue').textContent = `${Math.round(state.aoa)}°`;
+  }
+
+  canvas.addEventListener('pointerdown', event => {
+    const rect = canvas.getBoundingClientRect();
+    const distanceFromCenter = Math.hypot(
+      event.clientX - (rect.left + rect.width / 2),
+      event.clientY - (rect.top + rect.height / 2)
+    );
+    if (distanceFromCenter < 35) return;
+
+    state.isDraggingWing = true;
+    state.dragStartPointerAngle = pointerAngleFromCenter(event);
+    state.dragStartAoa = state.aoa;
+    canvas.classList.add('dragging');
+    canvas.setPointerCapture(event.pointerId);
+  });
+
+  canvas.addEventListener('pointermove', event => {
+    if (!state.isDraggingWing) return;
+    let delta = pointerAngleFromCenter(event) - state.dragStartPointerAngle;
+    if (delta > Math.PI) delta -= Math.PI * 2;
+    if (delta < -Math.PI) delta += Math.PI * 2;
+    updateAoa(state.dragStartAoa + delta * 180 / Math.PI);
+  });
+
+  function finishWingDrag(event) {
+    if (!state.isDraggingWing) return;
+    state.isDraggingWing = false;
+    canvas.classList.remove('dragging');
+    if (canvas.hasPointerCapture(event.pointerId)) canvas.releasePointerCapture(event.pointerId);
+  }
+
+  canvas.addEventListener('pointerup', finishWingDrag);
+  canvas.addEventListener('pointercancel', finishWingDrag);
+
+  document.getElementById('aoaSlider').addEventListener('input', (e) => {
+    updateAoa(parseFloat(e.target.value));
+  });
+
+  document.getElementById('speedSlider').addEventListener('input', (e) => {
+    state.speed = parseFloat(e.target.value);
+    document.getElementById('speedDisplay').textContent = state.speed.toFixed(1) + 'x';
+  });
+
+  document.getElementById('wingShape').addEventListener('change', (e) => {
+    state.wingShape = e.target.value;
+  });
+
+  document.getElementById('playBtn').addEventListener('click', function() {
+    state.isPlaying = !state.isPlaying;
+    this.classList.toggle('active');
+    this.textContent = state.isPlaying ? 'Pause' : 'Play';
+  });
+
+  document.getElementById('resetBtn').addEventListener('click', () => {
+    initParticles();
+    state.t = 0;
+  });
+
+  // Initialize
+  initParticles();
+  animate();
+});
+</script>
+
+</body>
+</html>
