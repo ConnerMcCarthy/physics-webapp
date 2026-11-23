@@ -1,0 +1,274 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Frog Hops</title>
+<meta name="description" content="A frog hops around a triangle. A kids' version of why adding up the digits tells you if a number splits into 3 equal groups.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #fff8ec;
+  --card: #ffffff;
+  --ink: #2b2340;
+  --soft: #6d6585;
+  --line: #eadfca;
+  --home: #ffbf2e;
+  --one: #4fb0ff;
+  --two: #ff6fae;
+  --green: #3cc47c;
+}
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+[hidden] { display: none !important; }
+html, body { background: var(--bg); color: var(--ink); font-family: 'Fredoka', 'Trebuchet MS', sans-serif; min-height: 100%; }
+body { background-image: radial-gradient(circle at 10% 0%, #ffe9c2 0, transparent 40%), radial-gradient(circle at 95% 100%, #ffe0ef 0, transparent 40%); background-attachment: fixed; }
+.page { max-width: 1060px; margin: 0 auto; padding: 22px 18px 60px; }
+
+/* Top bar + version switch */
+.top { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 18px; }
+.back { color: var(--soft); text-decoration: none; font-weight: 500; font-size: 15px; }
+.back:hover { color: var(--ink); }
+.mode { display: inline-flex; padding: 4px; border-radius: 999px; background: #fff; border: 2px solid var(--line); }
+.mode a { font: 600 14px 'Fredoka', sans-serif; text-decoration: none; color: var(--soft); padding: 6px 16px; border-radius: 999px; }
+.mode a.on { background: var(--ink); color: #fff; }
+.mode a:not(.on):hover { color: var(--ink); }
+
+h1 { font-size: clamp(38px, 7vw, 64px); font-weight: 700; line-height: 1; letter-spacing: -0.01em; }
+h1 .f { display: inline-block; animation: bob 2.4s ease-in-out infinite; }
+@keyframes bob { 50% { transform: translateY(-6px) rotate(-6deg); } }
+.sub { font-size: 20px; color: var(--soft); margin-top: 8px; }
+
+.levels { display: flex; gap: 10px; margin: 22px 0 16px; flex-wrap: wrap; }
+.lvl { font: 600 17px 'Fredoka', sans-serif; color: var(--ink); background: #fff; border: 3px solid var(--line); border-radius: 18px; padding: 10px 18px; cursor: pointer; transition: transform .12s; }
+.lvl:hover { transform: translateY(-2px); }
+.lvl.on { border-color: var(--ink); background: var(--ink); color: #fff; }
+
+.card { background: var(--card); border-radius: 28px; border: 3px solid var(--line); padding: 22px; display: grid; grid-template-columns: 1fr 1fr; gap: 22px; align-items: center; box-shadow: 0 10px 0 var(--line); }
+svg { width: 100%; max-width: 440px; display: block; margin: 0 auto; overflow: visible; }
+.edge { stroke: #e3d6bd; stroke-width: 6; stroke-linecap: round; }
+.arrowhead { fill: #d9c9a8; }
+.corner circle { stroke: #fff; stroke-width: 6; }
+.corner text.num { font: 700 30px 'Fredoka', sans-serif; fill: #fff; text-anchor: middle; dominant-baseline: central; }
+.corner text.lab { font: 600 16px 'Fredoka', sans-serif; text-anchor: middle; dominant-baseline: central; }
+.corner.pop circle { animation: pop .35s ease-out; transform-box: fill-box; transform-origin: center; }
+@keyframes pop { 50% { transform: scale(1.18); } }
+.critter { font-size: 46px; text-anchor: middle; dominant-baseline: central; }
+.count { font: 700 56px 'Fredoka', sans-serif; text-anchor: middle; dominant-baseline: central; fill: var(--ink); }
+.countlab { font: 500 16px 'Fredoka', sans-serif; text-anchor: middle; fill: var(--soft); }
+
+.say { font-size: 26px; font-weight: 600; line-height: 1.25; }
+.say .c0 { color: #e0a000; } .say .c1 { color: var(--one); } .say .c2 { color: var(--two); }
+.hint { font-size: 18px; color: var(--soft); margin-top: 8px; line-height: 1.45; }
+.dots { display: flex; flex-wrap: wrap; gap: 10px; margin: 16px 0; min-height: 44px; }
+.grp { display: inline-flex; gap: 4px; padding: 6px 8px; border-radius: 14px; background: #fff3d6; border: 2px dashed var(--home); }
+.grp.left { background: #eaf6ff; border-color: var(--one); }
+.dot { width: 18px; height: 18px; border-radius: 50%; background: var(--home); }
+.grp.left .dot { background: var(--one); }
+.grp .tag { font-size: 13px; color: var(--soft); align-self: center; margin-left: 4px; }
+.btns { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 16px; }
+.big { font: 700 22px 'Fredoka', sans-serif; color: #fff; background: var(--green); border: 0; border-radius: 20px; padding: 14px 26px; cursor: pointer; box-shadow: 0 6px 0 #2a9a5f; transition: transform .08s, box-shadow .08s; }
+.big:active { transform: translateY(4px); box-shadow: 0 2px 0 #2a9a5f; }
+.big:disabled { opacity: .5; cursor: default; }
+.small { font: 600 16px 'Fredoka', sans-serif; color: var(--ink); background: #fff; border: 3px solid var(--line); border-radius: 16px; padding: 10px 16px; cursor: pointer; }
+.small.sel { border-color: var(--ink); }
+.picks { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 10px; }
+.sum { font-size: 30px; font-weight: 700; margin: 12px 0 4px; }
+.sum .d { display: inline-block; min-width: 1ch; }
+.party { font-size: 24px; font-weight: 700; color: var(--green); margin-top: 12px; }
+.share { font-size: 19px; margin-top: 8px; color: var(--ink); line-height: 1.4; }
+.foot { text-align: center; color: var(--soft); font-size: 14px; margin-top: 34px; }
+
+@media (max-width: 820px) {
+  .card { grid-template-columns: 1fr; padding: 16px; }
+  .say { font-size: 22px; }
+  svg { max-width: 360px; }
+}
+@media (max-width: 420px) {
+  .mode a { padding: 6px 12px; }
+  .lvl { font-size: 15px; padding: 8px 12px; }
+  .big { font-size: 20px; padding: 12px 20px; }
+}
+</style>
+</head>
+<body>
+<div class="page">
+  <div class="top">
+    <a class="back" href="/">← Home</a>
+    <nav class="mode" aria-label="Version"><a href="/numbers/kids/" class="on" aria-current="page">Kids</a><a href="/numbers/simple/">Simple</a><a href="/numbers/">Full</a></nav>
+  </div>
+  <h1>Frog Hops <span class="f">🐸</span></h1>
+  <p class="sub">A frog hops around a triangle. Where will it stop?</p>
+
+  <div class="levels">
+    <button class="lvl" data-l="0">1 · Hop!</button>
+    <button class="lvl" data-l="1">2 · Ten hops</button>
+    <button class="lvl" data-l="2">3 · Magic trick ✨</button>
+  </div>
+
+  <div class="card">
+    <svg id="board" viewBox="0 0 400 380" role="img" aria-label="A triangle with corners Home, 1 and 2, and a frog"></svg>
+    <div id="side"></div>
+  </div>
+
+  <div class="foot">Ready for more? Try <a href="/numbers/simple/">Simple</a> or <a href="/numbers/">Full</a> at the top.</div>
+</div>
+
+<script>
+(() => {
+'use strict';
+const NS = 'http://www.w3.org/2000/svg';
+const $ = s => document.querySelector(s);
+const C = { x: 200, y: 205 }, R = 138;
+const P = [0, 1, 2].map(k => { const a = (-90 + 120 * k) * Math.PI / 180; return { x: C.x + R * Math.cos(a), y: C.y + R * Math.sin(a) }; });
+const COL = ['#ffbf2e', '#4fb0ff', '#ff6fae'];
+const NAME = ['Home ⭐', 'corner 1', 'corner 2'];
+const svg = $('#board');
+function el(tag, a, p) { const e = document.createElementNS(NS, tag); for (const k in a) e.setAttribute(k, a[k]); if (p) p.appendChild(e); return e; }
+
+// Board
+for (let k = 0; k < 3; k++) {
+  const a = P[k], b = P[(k + 1) % 3];
+  el('line', { x1: a.x, y1: a.y, x2: b.x, y2: b.y, class: 'edge' }, svg);
+  const mx = (a.x + b.x) / 2, my = (a.y + b.y) / 2, L = Math.hypot(b.x - a.x, b.y - a.y), dx = (b.x - a.x) / L, dy = (b.y - a.y) / L;
+  el('path', { class: 'arrowhead', d: `M${mx + dx * 10},${my + dy * 10} L${mx - dx * 8 - dy * 10},${my - dy * 8 + dx * 10} L${mx - dx * 8 + dy * 10},${my - dy * 8 - dx * 10}Z` }, svg);
+}
+const corners = P.map((p, k) => {
+  const g = el('g', { class: 'corner' }, svg);
+  el('circle', { cx: p.x, cy: p.y, r: 34, fill: COL[k] }, g);
+  el('text', { x: p.x, y: p.y + 1, class: 'num' }, g).textContent = k === 0 ? '⭐' : k;
+  el('text', { x: p.x, y: p.y + (k === 0 ? -50 : 54), class: 'lab', fill: COL[k] === '#ffbf2e' ? '#d99a00' : COL[k] }, g).textContent = k === 0 ? 'Home (0)' : 'Corner ' + k;
+  return g;
+});
+const count = el('text', { x: C.x, y: C.y + 22, class: 'count' }, svg);
+const countLab = el('text', { x: C.x, y: C.y + 58, class: 'countlab' }, svg);
+const frog = el('text', { class: 'critter' }, svg); frog.textContent = '🐸';
+
+// State + hopping
+let pos = 0, hops = 0, run = 0;
+const place = (pt, lift) => frog.setAttribute('transform', `translate(${pt.x},${pt.y - 34 - lift})`);
+function reset(critter) { pos = 0; hops = 0; run++; frog.textContent = critter || '🐸'; place(P[0], 0); setCount(0); }
+function setCount(n, lab) { count.textContent = n; countLab.textContent = lab ?? (n === 1 ? 'hop' : 'hops'); }
+function pop(k) { const g = corners[k]; g.classList.remove('pop'); void g.getBBox(); g.classList.add('pop'); }
+function hop(ms) {
+  const my = run, a = P[pos], b = P[(pos + 1) % 3], t0 = performance.now();
+  return new Promise(res => {
+    const f = now => {
+      if (my !== run) return res(false);
+      const t = Math.min(1, (now - t0) / ms);
+      place({ x: a.x + (b.x - a.x) * t, y: a.y + (b.y - a.y) * t }, Math.sin(Math.PI * t) * 46);
+      if (t < 1) return requestAnimationFrame(f);
+      pos = (pos + 1) % 3; hops++; pop(pos); res(true);
+    };
+    requestAnimationFrame(f);
+  });
+}
+async function hopMany(n, onHop) {
+  const ms = Math.max(70, Math.min(380, 3200 / Math.max(n, 1)));
+  for (let i = 0; i < n; i++) { if (!(await hop(ms))) return false; if (onHop) onHop(); }
+  return true;
+}
+const wait = ms => new Promise(r => setTimeout(r, ms));
+const span = (k, txt) => `<span class="c${k}">${txt}</span>`;
+
+// Dots grouped in threes: each full group is one trip around.
+function dots(n) {
+  const full = Math.floor(n / 3), left = n % 3;
+  if (n > 30) return `<div class="grp"><span class="tag">${full} groups of 3</span></div>${left ? `<div class="grp left">${'<span class="dot"></span>'.repeat(left)}<span class="tag">left over</span></div>` : ''}`;
+  let h = '';
+  for (let i = 0; i < full; i++) h += `<div class="grp">${'<span class="dot"></span>'.repeat(3)}</div>`;
+  if (left) h += `<div class="grp left">${'<span class="dot"></span>'.repeat(left)}<span class="tag">left over</span></div>`;
+  return h;
+}
+const trips = n => Math.floor(n / 3);
+const plural = (n, w) => `${n} ${w}${n === 1 ? '' : 's'}`;
+
+/* ── Level 1: hop one at a time ── */
+function level1() {
+  reset();
+  $('#side').innerHTML = `
+    <div class="say" id="say">Press <b>Hop!</b> to make the frog jump.</div>
+    <div class="dots" id="dots"></div>
+    <div class="hint">Every <b>3 hops</b> the frog goes all the way around and lands back <b>Home ⭐</b>.</div>
+    <div class="btns"><button class="big" id="hopBtn">Hop! 🐸</button><button class="small" id="again">Start over</button></div>`;
+  const upd = () => {
+    setCount(hops);
+    $('#dots').innerHTML = dots(hops);
+    const t = trips(hops), l = hops % 3;
+    $('#say').innerHTML = hops === 0 ? 'Press <b>Hop!</b> to make the frog jump.'
+      : l === 0 ? `${plural(hops, 'hop')} = ${plural(t, 'trip')} around. ${span(0, 'Back Home! ⭐')}`
+      : `${plural(hops, 'hop')} = ${plural(t, 'trip')} around + ${l} more. Frog is on ${span(l, 'corner ' + l)}.`;
+  };
+  let busy = false;
+  $('#hopBtn').onclick = async () => { if (busy) return; busy = true; await hop(380); busy = false; upd(); };
+  $('#again').onclick = level1;
+  upd();
+}
+
+/* ── Level 2: ten hops ── */
+function level2() {
+  reset();
+  $('#side').innerHTML = `
+    <div class="say" id="say">What happens after <b>10 hops</b>?</div>
+    <div class="dots" id="dots"></div>
+    <div class="hint" id="hint">Guess first: Home ⭐, corner 1, or corner 2?</div>
+    <div class="btns"><button class="big" id="go">Hop 10 times! 🐸</button></div>`;
+  $('#go').onclick = async () => {
+    reset(); $('#go').disabled = true;
+    const ok = await hopMany(10, () => { setCount(hops); $('#dots').innerHTML = dots(hops); });
+    $('#go').disabled = false; $('#go').textContent = 'Again!';
+    if (!ok) return;
+    $('#say').innerHTML = `10 hops = 3 trips around + ${span(1, '1 more hop')}.`;
+    $('#hint').innerHTML = `So <b>10 hops</b> ends on ${span(1, 'corner 1')} — the same place as <b>1 hop</b>! <br>For the frog, every 10 acts just like a 1.`;
+  };
+}
+
+/* ── Level 3: the magic trick ── */
+let pick = 47;
+function level3() {
+  reset();
+  $('#side').innerHTML = `
+    <div class="say">Pick a number. The frog hops that many times.</div>
+    <div class="picks">${[12, 25, 47, 51, 100, 123].map(n => `<button class="small${n === pick ? ' sel' : ''}" data-n="${n}">${n}</button>`).join('')}
+      <button class="small" data-n="rand">🎲</button></div>
+    <div id="trick"></div>
+    <div class="btns"><button class="big" id="go">Go! 🐸</button></div>`;
+  document.querySelectorAll('[data-n]').forEach(b => b.onclick = () => {
+    pick = b.dataset.n === 'rand' ? 10 + Math.floor(Math.random() * 190) : +b.dataset.n;
+    level3(); $('#go').click();
+  });
+  $('#go').onclick = async () => {
+    const n = pick, digits = String(n).split('').map(Number), sum = digits.reduce((a, b) => a + b, 0);
+    reset('🐸'); const my = run; $('#go').disabled = true;
+    const box = $('#trick');
+    box.innerHTML = `<div class="say" style="margin-top:14px">🐸 hops <b>${n}</b> times…</div>`;
+    if (!(await hopMany(n, () => setCount(hops)))) return;
+    const first = pos;
+    box.innerHTML += `<div class="hint">It stopped on ${span(first, NAME[first])}.</div>
+      <div class="sum">Now add the digits: ${digits.map(d => `<span class="d">${d}</span>`).join(' + ')} = ${sum}</div>`;
+    await wait(1100); if (my !== run) return;
+    reset('🐢'); const my2 = run;
+    box.innerHTML += `<div class="hint">🐢 Turtle hops just <b>${sum}</b> times…</div>`;
+    if (!(await hopMany(sum, () => setCount(hops)))) return;
+    if (my2 !== run) return;
+    const q = Math.floor(n / 3), r = n % 3;
+    box.innerHTML += `<div class="party">Same corner! 🎉 ${n} and ${sum} both land on ${NAME[pos]}.</div>
+      <div class="share">🍬 ${n} candies shared by 3 friends: everyone gets ${q}${r === 0 ? ', and <b>nothing is left over</b>. Fair share!' : `, and <b>${r} ${r === 1 ? 'is' : 'are'} left over</b>.`}</div>`;
+    $('#go').disabled = false; $('#go').textContent = 'Again!';
+  };
+}
+
+const levels = [level1, level2, level3];
+function show(i) {
+  document.querySelectorAll('.lvl').forEach((b, j) => b.classList.toggle('on', j === i));
+  levels[i]();
+  try { history.replaceState(null, '', '#' + (i + 1)); } catch (_) {}
+}
+document.querySelectorAll('.lvl').forEach(b => b.onclick = () => show(+b.dataset.l));
+const h = +location.hash.slice(1);
+show(h >= 1 && h <= 3 ? h - 1 : 0);
+})();
+</script>
+</body>
+</html>

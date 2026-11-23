@@ -1,0 +1,454 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Why Adding Digits Works</title>
+<meta name="description" content="The divisibility rule for 3 in four pictures: numbers around a triangle, side by side with the math.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&family=STIX+Two+Text:wght@400;600&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #f7f6f2;
+  --card: #ffffff;
+  --ink: #1d1d22;
+  --soft: #66656e;
+  --faint: #a9a8b0;
+  --line: #e4e2db;
+  --c0: #1a9b77;   /* corner 0 */
+  --c1: #2f6fec;   /* corner 1 */
+  --c2: #c2410c;   /* corner 2 */
+  --math: 'STIX Two Text', Georgia, serif;
+  --mono: 'IBM Plex Mono', ui-monospace, monospace;
+}
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { background: var(--bg); color: var(--ink); font-family: 'IBM Plex Sans', system-ui, sans-serif; min-height: 100%; }
+.page { max-width: 1000px; margin: 0 auto; padding: 24px 20px 64px; }
+
+.top { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 30px; }
+.back { color: var(--soft); text-decoration: none; font-size: 14px; }
+.back:hover { color: var(--ink); }
+.mode { display: inline-flex; padding: 3px; border-radius: 999px; background: var(--card); border: 1px solid var(--line); }
+.mode a { font: 500 13px 'IBM Plex Sans', sans-serif; text-decoration: none; color: var(--soft); padding: 6px 14px; border-radius: 999px; }
+.mode a.on { background: var(--ink); color: #fff; }
+.mode a:not(.on):hover { color: var(--ink); }
+
+h1 { font-size: clamp(30px, 5vw, 44px); font-weight: 600; letter-spacing: -0.02em; line-height: 1.1; }
+.sub { color: var(--soft); font-size: 18px; margin-top: 8px; }
+
+.row { display: grid; grid-template-columns: 380px 1fr; gap: 32px; align-items: center; background: var(--card); border: 1px solid var(--line); border-radius: 18px; padding: 22px 28px 22px 18px; margin-top: 18px; }
+.pic { position: relative; }
+.pic svg { width: 100%; display: block; }
+.replay { position: absolute; left: 0; top: 0; font: 500 12px 'IBM Plex Sans', sans-serif; color: var(--soft); background: var(--bg); border: 1px solid var(--line); border-radius: 999px; padding: 4px 10px; cursor: pointer; }
+.replay:hover { color: var(--ink); }
+.num { font: 500 12px var(--mono); color: var(--faint); letter-spacing: .12em; }
+h2 { font-size: 22px; font-weight: 600; margin: 4px 0 10px; letter-spacing: -0.01em; }
+.eq { font-family: var(--math); font-size: 28px; line-height: 1.3; margin: 6px 0; }
+.eq.small { font-size: 23px; }
+.why { color: var(--soft); font-size: 16px; line-height: 1.55; margin: 2px 0 8px; }
+.res { display: inline-block; margin-top: 8px; font-size: 16px; padding: 7px 12px; border-radius: 10px; background: var(--bg); }
+.res b { font-weight: 600; }
+.try { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; color: var(--soft); font-size: 15px; }
+.try input { font: 500 18px var(--mono); width: 130px; padding: 6px 10px; border: 1px solid var(--line); border-radius: 10px; background: var(--bg); color: var(--ink); }
+.picks { display: flex; gap: 6px; margin: 2px 0 8px; }
+.pk { font: 500 14px var(--mono); color: var(--soft); background: var(--bg); border: 1px solid var(--line); border-radius: 8px; padding: 4px 12px; cursor: pointer; }
+.pk.sel { color: #fff; background: var(--ink); border-color: var(--ink); }
+.eq .why { font-family: 'IBM Plex Sans', sans-serif; font-size: 15px; }
+.rule { margin-top: 22px; padding: 18px 22px; border-radius: 16px; background: var(--ink); color: #fff; font-size: 18px; line-height: 1.5; }
+.rule b { color: #8fd9c0; }
+.foot { margin-top: 30px; text-align: center; color: var(--faint); font-size: 13px; }
+.foot a { color: var(--soft); }
+
+.shapes { margin-top: 28px; text-align: center; }
+.shapes-lab { color: var(--soft); font-size: 15px; margin-bottom: 10px; }
+.shapes-row { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; }
+.shp { display: inline-flex; flex-direction: column; align-items: center; gap: 4px; min-width: 78px; padding: 10px 10px 8px; border-radius: 14px; border: 1px solid var(--line); background: var(--card); color: var(--soft); font: 500 13px 'IBM Plex Sans', sans-serif; cursor: pointer; transition: border-color .15s, color .15s; }
+.shp svg { width: 34px; height: 34px; }
+.shp svg polygon { fill: none; stroke: currentColor; stroke-width: 2; }
+.shp b { font: 600 16px var(--math); color: var(--ink); }
+.shp:hover { border-color: var(--faint); color: var(--ink); }
+.shp.sel { border-color: var(--ink); background: var(--ink); color: #fff; }
+.shp.sel b { color: #fff; }
+.places { font: 400 14px var(--mono); color: var(--soft); margin-top: 6px; }
+
+/* SVG */
+.edge { stroke: var(--line); stroke-width: 2.5; }
+.chev { fill: none; stroke: var(--faint); stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.cn circle { fill: #fff; stroke-width: 2.5; }
+.cn text { font: 600 24px var(--math); text-anchor: middle; dominant-baseline: central; }
+.dot { fill: var(--ink); }
+.big { font: 600 64px var(--math); fill: var(--ink); text-anchor: middle; dominant-baseline: central; }
+.biglab { font: 500 15px 'IBM Plex Sans', sans-serif; fill: var(--soft); text-anchor: middle; dominant-baseline: central; }
+.trail { fill: none; stroke: var(--ink); stroke-width: 2.5; opacity: .18; stroke-linecap: round; }
+
+@media (max-width: 760px) {
+  .row { grid-template-columns: 1fr; gap: 6px; padding: 16px; }
+  .pic { max-width: 330px; width: 100%; margin: 0 auto; }
+  .eq { font-size: 24px; } .eq.small { font-size: 20px; }
+  .top { margin-bottom: 20px; }
+}
+@media (max-width: 400px) { .mode a { padding: 6px 10px; } }
+</style>
+</head>
+<body>
+<div class="page">
+  <div class="top">
+    <a class="back" href="/">← Physics</a>
+    <nav class="mode" aria-label="Version"><a href="/numbers/kids/">Kids</a><a href="/numbers/simple/" class="on" aria-current="page">Simple</a><a href="/numbers/">Full</a></nav>
+  </div>
+  <h1 id="title">Why adding the digits works</h1>
+  <p class="sub" id="subtitle">The divide-by-3 rule in four pictures.</p>
+
+  <section class="row">
+    <div class="pic"><svg id="p1" viewBox="8 22 444 380"></svg><button class="replay" data-p="0">↻ replay</button></div>
+    <div><div class="num">1</div><div id="t1"></div></div>
+  </section>
+
+  <section class="row">
+    <div class="pic"><svg id="p2" viewBox="8 22 444 380"></svg><button class="replay" data-p="1">↻ replay</button></div>
+    <div><div class="num">2</div><div id="t2"></div></div>
+  </section>
+
+  <section class="row">
+    <div class="pic"><svg id="p3" viewBox="8 22 444 380"></svg><button class="replay" data-p="2">↻ replay</button></div>
+    <div>
+      <div class="num">3</div>
+      <h2 id="h3"></h2>
+      <div class="picks" id="picks3"></div>
+      <div id="t3"></div>
+    </div>
+  </section>
+
+  <section class="row">
+    <div class="pic"><svg id="p4" viewBox="8 22 444 380"></svg><button class="replay" data-p="3">↻ replay</button></div>
+    <div>
+      <div class="num">4</div>
+      <h2 id="h4">So each digit is just steps</h2>
+      <label class="try">Try a number <input id="n" inputmode="numeric" value="472" maxlength="6" aria-label="number"></label>
+      <div id="t4"></div>
+    </div>
+  </section>
+
+  <div class="rule" id="rule"></div>
+
+  <div class="shapes">
+    <div class="shapes-lab">Try another shape: divide by</div>
+    <div class="shapes-row" id="shapes"></div>
+  </div>
+
+  <div class="foot">Want more detail? See the <a href="/numbers/">Full</a> version. For younger kids, try <a href="/numbers/kids/">Kids</a>.</div>
+</div>
+
+<script>
+(() => {
+'use strict';
+const NS = 'http://www.w3.org/2000/svg';
+const COL = ['#1a9b77', '#2f6fec', '#c2410c', '#7c3aed', '#b45309', '#db2777', '#0e7490', '#4d7c0f', '#9333ea', '#0369a1', '#be123c'];
+const SHAPE = { 3: 'triangle', 4: 'square', 5: 'pentagon', 6: 'hexagon', 7: 'heptagon', 8: 'octagon', 11: '11-gon' };
+const A = k => (k === 8 || k === 11 ? 'an ' : 'a ') + SHAPE[k];
+const WORD = ['zero', 'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine', 'ten'];
+const RULE = {
+  3: '<b>The rule:</b> add up the digits. The number and its digit sum land on the same corner, so a number divides by 3 exactly when its digit sum does.',
+  4: '<b>The rule:</b> 100 is whole trips around the square, so everything from the hundreds up lands back at 0. Only the <b>last two digits</b> matter: a number divides by 4 exactly when its last two digits do.',
+  5: '<b>The rule:</b> 10 is whole trips around the pentagon, so every ten, hundred and thousand lands back at 0. Only the <b>last digit</b> matters: a number divides by 5 exactly when it ends in 0 or 5.',
+  6: '<b>The rule:</b> every ten, hundred and thousand moves 4 corners around the hexagon. So the steps are the <b>last digit + 4 × the other digits</b>. (Shortcut: a number divides by 6 when it is even and divides by 3.)',
+  7: '<b>The rule:</b> chop off the last digit, <b>double it, and subtract</b> it from the rest. Repeat until the number is small. The original divides by 7 exactly when the small one does. (Or <b>add 5 ×</b> the last digit instead: on a heptagon, 5 steps forward land where 2 steps back do.)',
+  8: '<b>The rule:</b> 1000 is whole trips around the octagon, so everything from the thousands up lands back at 0. Only the <b>last three digits</b> matter: a number divides by 8 exactly when its last three digits do.',
+  11: '<b>The rule:</b> 10 is one step <b>short</b> of a full trip, so a jump of 10 is one step <b>back</b>, and 100 is one step forward again. Going right to left: <b>add, subtract, add, subtract</b> the digits. A number divides by 11 exactly when that alternating sum does.'
+};
+const C = { x: 230, y: 210 }, R = 150;
+const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
+let m = 3, P = [];
+const $ = id => document.getElementById(id);
+const fmt = n => n.toLocaleString('en-US');
+const s_ = (n, w) => `${n} ${w}${n === 1 ? '' : 's'}`;
+const ck = (k, txt) => `<span style="color:${COL[k]}">${txt}</span>`;
+const cb = (k, txt) => `<b style="color:${COL[k]}">${txt}</b>`;
+const corner = k => cb(k, 'corner ' + k);
+const trips = (steps) => { const q = Math.floor(steps / m), r = steps % m; return q === 0 ? `less than 1 trip` : `${s_(q, 'trip')}${r ? ` + ${r}` : ' · back at 0'}`; };
+function el(tag, a, p) { const e = document.createElementNS(NS, tag); for (const k in a) e.setAttribute(k, a[k]); if (p) p.appendChild(e); return e; }
+const ease = t => t < .5 ? 2 * t * t : 1 - (-2 * t + 2) ** 2 / 2;
+const corners = n => Array.from({ length: n }, (_, k) => { const a = (-90 + 360 * k / n) * Math.PI / 180; return { x: C.x + R * Math.cos(a), y: C.y + R * Math.sin(a) }; });
+
+// One shape picture with a walking dot and a big counter in the middle.
+function board(svg) {
+  svg.replaceChildren();
+  for (let k = 0; k < m; k++) {
+    const a = P[k], b = P[(k + 1) % m];
+    el('line', { x1: a.x, y1: a.y, x2: b.x, y2: b.y, class: 'edge' }, svg);
+    const mx = (a.x + b.x) / 2, my = (a.y + b.y) / 2, L = Math.hypot(b.x - a.x, b.y - a.y), dx = (b.x - a.x) / L, dy = (b.y - a.y) / L;
+    el('path', { class: 'chev', d: `M${mx - dx * 5 - dy * 6},${my - dy * 5 + dx * 6} L${mx + dx * 5},${my + dy * 5} L${mx - dx * 5 + dy * 6},${my - dy * 5 - dx * 6}` }, svg);
+  }
+  const trail = el('g', {}, svg);
+  // The dot travels under the corner circles; the corner it rests on fills with its colour.
+  const dot = el('circle', { r: 7, class: 'dot', cx: P[0].x, cy: P[0].y }, svg);
+  const cns = P.map((p, k) => {
+    const g = el('g', { class: 'cn' }, svg);
+    return { c: el('circle', { cx: p.x, cy: p.y, r: 26, stroke: COL[k] }, g), t: Object.assign(el('text', { x: p.x, y: p.y + 1, fill: COL[k] }, g), { textContent: k }) };
+  });
+  const big = el('text', { x: C.x, y: C.y - 2, class: 'big' }, svg);
+  const lab = el('text', { x: C.x, y: C.y + 40, class: 'biglab' }, svg);
+  const b = { trail, dot, big, lab, cns, tok: 0 };
+  here(b, 0);
+  return b;
+}
+function here(b, k) {
+  b.cns.forEach((x, j) => { x.c.style.fill = j === k ? COL[j] : '#fff'; x.t.setAttribute('fill', j === k ? '#fff' : COL[j]); });
+}
+function setCount(b, n, label) { b.big.textContent = n; b.lab.textContent = label; }
+// Play a list of moves; each move goes that many corners (negative = backwards, 0 = stays put).
+function walk(b, moves, ms, onMove) {
+  const tok = ++b.tok;
+  b.trail.replaceChildren();
+  b.dot.setAttribute('cx', P[0].x); b.dot.setAttribute('cy', P[0].y); b.dot.setAttribute('r', 7);
+  here(b, 0);
+  if (reduced) ms = 1;
+  let pos = 0, i = 0;
+  const next = () => {
+    if (tok !== b.tok || i >= moves.length) return;
+    const w = moves[i], start = pos, t0 = performance.now(), dir = w < 0 ? -1 : 1, aw = Math.abs(w);
+    const dur = w === 0 ? ms : ms * (1 + (aw - 1) * 0.3);
+    if (w !== 0) here(b, -1);
+    const f = now => {
+      if (tok !== b.tok) return;
+      const t = Math.min(1, (now - t0) / dur);
+      if (w === 0) b.cns[start].c.setAttribute('r', 26 * (1 + 0.18 * Math.sin(Math.PI * t)));
+      else {
+        const p = ease(t) * aw, seg = Math.min(Math.floor(p), aw - 1), fr = p - seg;
+        const a = P[((start + dir * seg) % m + m) % m], c = P[((start + dir * (seg + 1)) % m + m) % m];
+        b.dot.setAttribute('cx', a.x + (c.x - a.x) * fr); b.dot.setAttribute('cy', a.y + (c.y - a.y) * fr);
+      }
+      if (t < 1) return requestAnimationFrame(f);
+      b.cns[start].c.setAttribute('r', 26);
+      for (let s = 0; s < aw; s++) { const a = P[((start + dir * s) % m + m) % m], c = P[((start + dir * (s + 1)) % m + m) % m]; el('line', { x1: a.x, y1: a.y, x2: c.x, y2: c.y, class: 'trail' }, b.trail); }
+      pos = ((start + w) % m + m) % m; i++;
+      here(b, pos);
+      if (onMove) onMove(i, pos);
+      setTimeout(next, moves.length > 24 ? 30 : 70);
+    };
+    requestAnimationFrame(f);
+  };
+  setTimeout(next, 250);
+}
+const boards = [];
+const drawn = w => (m === 11 && w === 10 ? -1 : w);
+
+/* 1 · count 2m+1 steps: two trips and one more */
+function play1() {
+  const b = boards[0], n = 2 * m + 1;
+  setCount(b, '0', 'steps');
+  walk(b, Array(n).fill(1), 420 - m * 25, i => setCount(b, i, i === n ? '2 trips + 1 step' : i % m === 0 ? `${s_(i / m, 'trip')} · back at 0` : s_(i, 'step').replace(/^\d+ /, '')));
+}
+function text1() {
+  const n = 2 * m + 1, list = Array.from({ length: m }, (_, k) => k).join(', ');
+  $('t1').innerHTML = `
+    <h2>Count around ${A(m)}</h2>
+    <p class="why">Walk around ${WORD[m]} corners: ${list}, then back to the start. Count the steps.</p>
+    <div class="eq">${n} = ${m} + ${m} + ${ck(1, '1')}</div>
+    <p class="why">Two full trips, then one more step.</p>
+    <div class="res">${n} lands on ${corner(1)}, so ${n} ÷ ${m} leaves ${cb(1, 1)}.</div>`;
+}
+
+/* 2 · ten steps (for 7: fifty steps) */
+function play2() {
+  const b = boards[1];
+  if (m === 7) {
+    // 50 = seven full trips (shown one trip per move) + 1 step.
+    setCount(b, '0', 'steps');
+    return walk(b, [...Array(7).fill(7), 1], 300, i => setCount(b, i === 8 ? 50 : i * 7, i === 8 ? '7 trips + 1 step' : `${s_(i, 'trip')} · back at 0`));
+  }
+  setCount(b, '0', 'steps');
+  walk(b, Array(10).fill(1), 360 - m * 20, i => setCount(b, i, i === 10 ? (m === 11 ? '10 steps · one short of home' : `10 steps = ${trips(10)}`) : i % m === 0 ? `${s_(i / m, 'trip')} · back at 0` : s_(i, 'step').replace(/^\d+ /, '')));
+}
+function text2() {
+  const q = Math.floor(10 / m), r = 10 % m;
+  const h = r === 1 ? 'Ten lands where one lands' : r === 0 ? 'Ten is whole trips' : `Ten lands on corner ${r}`;
+  if (m === 7) {
+    $('t2').innerHTML = `<h2>Fifty lands where one lands</h2>
+      <div class="eq">50 = ${ck(0, '49')} + ${ck(1, '1')}</div>
+      <p class="why">${ck(0, '49')} = 7 × 7 is seven full trips, back to 0. Then ${ck(1, 'one')} more step.</p>
+      <div class="res">50 lands on ${corner(1)}: on a heptagon, <b>five tens</b> are worth just one step.</div>`;
+    return;
+  }
+  if (m === 11) {
+    $('t2').innerHTML = `<h2>Ten is one step short of a trip</h2>
+      <div class="eq">10 = 11 − ${ck(1, '1')}</div>
+      <p class="why">Ten steps take you to corner 10, one corner before home. So a jump of 10 ends up ${ck(1, 'one step backwards')}.</p>
+      <div class="res">10 lands on ${corner(10)}: the same as stepping 1 back from 0.</div>`;
+    return;
+  }
+  const eq = m === 3 ? `10 = ${ck(0, '9')} + ${ck(1, '1')}` : `10 = ${Array(q).fill(m).join(' + ')}${r ? ` + ${ck(r, r)}` : ''}`;
+  const why = m === 3 ? `${ck(0, '9')} is three full trips, back to 0. Then ${ck(1, 'one')} more step.`
+    : `${q === 1 ? 'One full trip' : WORD[q][0].toUpperCase() + WORD[q].slice(1) + ' full trips'}${r ? `, then ${ck(r, WORD[r])} more step${r === 1 ? '' : 's'}.` : `, and you're back at ${ck(0, '0')}.`}`;
+  const res = r === 0 ? `10 lands back on ${corner(0)}: on ${A(m)}, a jump of 10 doesn't move you at all.`
+    : r === 1 ? `10 lands on ${corner(1)}, the same as 1.`
+    : `10 lands on ${corner(r)}: every jump of 10 moves ${r} corners.`;
+  $('t2').innerHTML = `<h2>${h}</h2><div class="eq">${eq}</div><p class="why">${why}</p><div class="res">${res}</div>`;
+}
+
+/* 3 · 100 is ten 10s (and 1000 is ten 100s) */
+let v3 = 100;
+function picks3() {
+  const vals = m === 7 ? [63, 64] : [100, 1000];
+  if (!vals.includes(v3)) v3 = vals[0];
+  $('picks3').innerHTML = vals.map(v => `<button class="pk${v === v3 ? ' sel' : ''}" data-v="${v}">${fmt(v)}</button>`).join('');
+}
+$('picks3').addEventListener('click', e => {
+  const btn = e.target.closest('.pk'); if (!btn) return;
+  v3 = +btn.dataset.v; picks3(); step3();
+});
+// 7 · row 3: 5 × N turns each ten into a 50 (one step), so 5 × N is (rest + 5 × last) steps.
+function seven3() {
+  const N = v3, a = Math.floor(N / 10), d = N % 10, S = a + 5 * d, land = S % 7;
+  $('h3').textContent = 'Multiply by 5: every ten becomes one step';
+  $('t3').innerHTML = `<div class="eq small">5 × ${N} = ${a} × ${ck(1, '50')} + ${d} × 5</div>
+    <div class="eq small">→ ${a} × ${ck(1, '1')} + ${d} × 5 = ${ck(land, S)} steps</div>
+    <p class="why">Every 50 is one step (row 2), so 5 × ${N} is only ${a} + ${5 * d} = <b>${S} steps</b> = ${trips(S)}.</p>
+    <p class="why">Multiplying by 5 is fair: 5 and 7 share no factor, so 5 × ${N} lands on 0 exactly when ${N} does.</p>
+    <div class="res">${land === 0 ? `Back at ${corner(0)}, so ${cb(0, `${N} divides by 7`)}.` : `${S} lands on ${corner(land)}, not 0, so ${N} <b>doesn't</b> divide by 7.`}</div>`;
+  const b = boards[2];
+  let val = 0, steps = 0;
+  setCount(b, '0', `5 × ${N}`);
+  const moves = [...Array(a).fill(1), ...Array(d).fill(5)];
+  walk(b, moves, 260, i => {
+    const fifty = i <= a; val += fifty ? 50 : 5; steps += fifty ? 1 : 5;
+    setCount(b, fmt(val), i === moves.length ? `${s_(S, 'step')} = ${trips(S)}` : fifty ? `jump of 50 · ${s_(steps, 'step')}` : `jump of 5 · ${s_(steps, 'step')}`);
+  });
+}
+function step3() {
+  if (m === 7) return seven3();
+  const J = v3 / 10, w = J % m, total = 10 * w, land = v3 % m;
+  const from = J === 10 ? 'From row 2' : 'From the 100 button';
+  $('h3').textContent = `${fmt(v3)} is just ten ${fmt(J)}s`;
+  const why = w === 0 ? `${from}: a jump of ${fmt(J)} moves ${ck(0, '0 corners')}. Ten jumps that go nowhere still go nowhere.`
+    : w === 1 ? `${from}: a jump of ${fmt(J)} moves just ${ck(1, 'one corner')}. So ${fmt(v3)} is only <b>10 steps</b>, and 10 steps lands on ${ck(land, 'corner ' + land)}.`
+    : `${from}: a jump of ${fmt(J)} moves ${ck(w, w + ' corners')}${m === 11 && w === 10 ? ' (one step back)' : ''}. So ${fmt(v3)} is 10 × ${w} = <b>${total} steps</b> = ${trips(total)}.${m === 11 ? ` Ten steps back is one full trip back plus one more: ${ck(land, 'corner ' + land)}.` : ''}`;
+  const res = land === 0 ? `${fmt(v3)} lands back on ${corner(0)}, so it vanishes from the count!`
+    : land === 1 && m === 3 ? `${fmt(v3)} lands on ${corner(1)}, just like 1 and 10.`
+    : `${fmt(v3)} lands on ${corner(land)}.`;
+  const places = [1, 10, 100, 1000].map(p => `${fmt(p)} → ${p % m}`).join(' · ');
+  $('t3').innerHTML = `<div class="eq small">${fmt(v3)} = ${fmt(J)} + ${fmt(J)} + … + ${fmt(J)} <span class="why">(ten times)</span></div>
+    <p class="why">${why}</p><div class="res">${res}</div>
+    <div class="places">corners moved: ${places}</div>`;
+  const b = boards[2];
+  setCount(b, '0', `jumps of ${fmt(J)}`);
+  const d = drawn(w);
+  walk(b, Array(10).fill(d), w === 0 ? 260 : Math.max(160, 380 - m * 20), (i, pos) => {
+    const end = w === 0 ? "didn't move · still at 0" : d < 0 ? `10 steps back · corner ${pos}` : `${total} steps = ${trips(total)}`;
+    setCount(b, fmt(i * J), i === 10 ? end : d < 0 ? `jump of ${fmt(J)} · 1 step back` : `jump of ${fmt(J)} · moves ${w}`);
+  });
+}
+
+/* 4 · any number: each digit moves (digit × corners for its place) */
+// For 11: a 10-move is one step back, so the digits alternate + and − from the right.
+function alt11(ds) {
+  const n = ds.length;
+  const terms = ds.map((d, i) => ({ d, sign: (n - 1 - i) % 2 ? -1 : 1 }));
+  const alt = terms.reduce((a, t) => a + t.sign * t.d, 0), land = ((alt % 11) + 11) % 11;
+  const expr = terms.map((t, i) => (i === 0 ? (t.sign < 0 ? '−' : '') : t.sign < 0 ? ' − ' : ' + ') + t.d).join('');
+  const back = alt < 0 ? ` (${-alt} back from 0 is ${ck(land, 'corner ' + land)})` : alt >= 11 ? ` = ${ck(land, 'corner ' + land)} after whole trips` : '';
+  return `<p class="why">Shortcut: count each 10-move as one step back. <span style="font-family:var(--math);font-size:20px;color:var(--ink)">${expr} = ${alt < 0 ? '−' + -alt : alt}</span>${back}.</p>`;
+}
+const input = $('n');
+const PLACE = ['ones', 'tens', 'hundreds', 'thousands', 'ten-thousands', 'hundred-thousands'];
+// 7 · row 4: rest − 2 × last, repeated until two digits; then walk the small number.
+function seven4(N) {
+  const lines = [];
+  let x = N;
+  while (x > 99) {
+    const a = Math.floor(x / 10), d = x % 10, y = a - 2 * d;
+    lines.push(`<div class="eq small">${fmt(x)} → ${fmt(a)} − 2×${d} = ${y < 0 ? '−' + fmt(-y) : fmt(y)}</div>`);
+    x = y;
+  }
+  const land = ((x % 7) + 7) % 7, ok = land === 0;
+  $('h4').textContent = 'The shortcut: chop, double, subtract';
+  $('t4').innerHTML = `${lines.join('') || `<div class="eq small">${fmt(N)} is already small</div>`}
+    <p class="why">Adding 5 × the last digit works (row 3). Subtracting 2 × it lands on the same corner, because 5 steps forward and 2 steps back meet (5 + 2 = 7). Subtracting keeps the numbers small.</p>
+    <div class="res">${x < 0 ? `${-x} steps back` : `${s_(x, 'step')}`} land${x === 1 || x === -1 ? 's' : ''} on ${corner(land)}, so ${ok ? cb(0, `${fmt(N)} divides by 7`) + '.' : `${fmt(N)} <b>doesn't</b> divide by 7.`}</div>
+    <p class="why" style="font-size:14px">This trick answers yes or no. The corner it lands on isn't the remainder of ${fmt(N)}.</p>`;
+  // Walk it: whole trips as one lap each, then the leftover steps (backwards if negative).
+  const b = boards[3], k = Math.abs(x), dir = x < 0 ? -1 : 1, laps = Math.floor(k / 7);
+  const moves = [...Array(laps).fill(7 * dir), ...Array(k % 7).fill(dir)];
+  let done = 0;
+  setCount(b, '0', 'steps');
+  walk(b, moves, laps > 6 ? 110 : 240, i => {
+    done += Math.abs(moves[i - 1]);
+    const last = i === moves.length;
+    setCount(b, x < 0 ? '−' + done : done, last ? (ok ? trips(k) : `corner ${land} · not 0`) : i <= laps ? `${s_(i, 'trip')}${x < 0 ? ' back' : ''}` : x < 0 ? `${done} back` : s_(done, 'step'));
+  });
+  if (k === 0) setCount(b, '0', 'still at 0');
+}
+function step4() {
+  if (m === 7) return seven4(+(input.value.replace(/\D/g, '').replace(/^0+(?=\d)/, '') || '0').slice(0, 6));
+  $('h4').textContent = 'So each digit is just steps';
+  const s = (input.value.replace(/\D/g, '').replace(/^0+(?=\d)/, '') || '0').slice(0, 6);
+  const ds = s.split('').map(Number), n = ds.length, N = +s, r = N % m;
+  const wt = k => 10 ** k % m;
+  const S = ds.reduce((a, d, i) => a + d * wt(n - 1 - i), 0);
+  const parts = ds.map((d, i) => `${d} ${PLACE[n - 1 - i].replace(/s$/, d === 1 ? '' : 's')}`).filter((_, i) => ds[i] !== 0);
+  const sumLine = m === 3 ? ds.join(' + ') : ds.map((d, i) => `${d}×${wt(n - 1 - i)}`).join(' + ');
+  const why = m === 3 ? `Each hundred, ten or one is a single step (rows 2 and 3). So ${fmt(N)} is just ${S} steps around the triangle.`
+    : `Each one moves 1 corner, each ten ${wt(1)}, each hundred ${wt(2)}${n > 3 ? `, each thousand ${wt(3)}` : ''} (rows 2 and 3). So ${fmt(N)} is just ${S} steps around the ${SHAPE[m]}.`;
+  $('t4').innerHTML = `<div class="eq small">${fmt(N)} = ${parts.join(' + ') || '0'}</div>
+    <div class="eq small">→ ${sumLine} = ${ck(S % m, S)} steps</div>
+    <p class="why">${why}</p>${m === 11 ? alt11(ds) : ''}
+    <div class="res">${S} lands on ${corner(S % m)}, so ${fmt(N)} does too: ${r === 0 ? cb(0, `it divides by ${m}`) + '.' : `÷ ${m} leaves ${cb(r, r)}.`}</div>`;
+  // One move per unit of each digit, biggest place first; a move goes (place value mod m) corners.
+  const jumps = ds.flatMap((d, i) => Array(d).fill(n - 1 - i));
+  const b = boards[3], net = jumps.reduce((a, k) => a + drawn(wt(k)), 0);
+  const done = () => S === 0 ? 'no steps · still at 0' : m === 11 ? `net ${net < 0 ? '−' + -net : net} · corner ${r}` : `${s_(S, 'step')} = ${trips(S)}`;
+  let val = 0, steps = 0;
+  setCount(b, '0', jumps.length ? 'steps' : done());
+  walk(b, jumps.map(k => drawn(wt(k))), Math.max(90, Math.min(300, 4000 / Math.max(jumps.length, 1))), i => {
+    const k = jumps[i - 1]; val += 10 ** k; steps += drawn(wt(k));
+    const run = m === 11 ? `net ${steps < 0 ? '−' + -steps : steps}` : s_(steps, 'step');
+    setCount(b, fmt(val), i === jumps.length ? done() : `jump of ${fmt(10 ** k)} · ${run}`);
+  });
+}
+input.addEventListener('input', step4);
+
+/* Shape picker + scroll-triggered playback */
+const plays = [play1, play2, step3, step4];
+document.querySelectorAll('.replay').forEach(btn => btn.addEventListener('click', () => plays[+btn.dataset.p]()));
+const svgs = [...document.querySelectorAll('.pic svg')];
+let seen = new Set();
+const io = new IntersectionObserver(es => es.forEach(e => {
+  const i = svgs.indexOf(e.target);
+  if (e.isIntersecting && !seen.has(i)) { seen.add(i); plays[i](); }
+}), { threshold: 0.5 });
+
+function poly(n, size) {
+  return Array.from({ length: n }, (_, k) => { const a = (-90 + 360 * k / n) * Math.PI / 180; return `${17 + size * Math.cos(a)},${18 + size * Math.sin(a)}`; }).join(' ');
+}
+$('shapes').innerHTML = [3, 4, 5, 6, 7, 8, 11].map(k => `<button class="shp" data-m="${k}"><svg viewBox="0 0 34 34"><polygon points="${poly(k, 14)}"/></svg><b>${k}</b>${SHAPE[k]}</button>`).join('');
+document.querySelectorAll('.shp').forEach(btn => btn.addEventListener('click', () => {
+  setShape(+btn.dataset.m);
+  window.scrollTo({ top: 0, behavior: reduced ? 'auto' : 'smooth' });
+}));
+
+function setShape(k) {
+  m = SHAPE[k] ? k : 3;
+  P = corners(m);
+  document.querySelectorAll('.shp').forEach(b => b.classList.toggle('sel', +b.dataset.m === m));
+  $('title').textContent = m === 3 ? 'Why adding the digits works' : `Dividing by ${m}: walk ${A(m)}`;
+  $('subtitle').textContent = m === 7 ? 'The divide-by-7 trick (×5 or −2×) in four pictures.' : `The divide-by-${m} rule in four pictures.`;
+  picks3();
+  document.title = m === 3 ? 'Why Adding Digits Works' : `Dividing by ${m}`;
+  $('rule').innerHTML = RULE[m];
+  svgs.forEach((svg, i) => { if (boards[i]) boards[i].tok++; boards[i] = board(svg); });
+  svgs.forEach(svg => svg.setAttribute('aria-label', `${A(m)} with corners 0 to ${m - 1}`));
+  text1(); text2();
+  // Fill rows 3 and 4 text now; their pictures play when scrolled into view.
+  step3(); step4();
+  boards[2].tok++; boards[3].tok++;
+  setCount(boards[2], '0', ''); setCount(boards[3], '0', '');
+  try { history.replaceState(null, '', m === 3 ? location.pathname : '#' + m); } catch (_) {}
+  seen = new Set(); io.disconnect(); svgs.forEach(s => io.observe(s));
+}
+const h = parseInt(location.hash.slice(1), 10);
+setShape(SHAPE[h] ? h : 3);
+})();
+</script>
+</body>
+</html>

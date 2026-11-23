@@ -207,6 +207,11 @@ canvas#stars {
   border: 1px solid rgba(80,220,120,0.25);
   color: rgba(80,220,120,0.9);
 }
+.card-badge.wip {
+  background: rgba(255,200,90,0.08);
+  border: 1px solid rgba(255,200,90,0.28);
+  color: rgba(255,205,110,0.9);
+}
 .card-badge.soon {
   background: rgba(255,255,255,0.04);
   border: 1px solid rgba(255,255,255,0.1);
@@ -280,7 +285,6 @@ canvas#stars {
   <p class="site-sub">Interactive simulations and explanations of the counterintuitive corners of classical physics.</p>
 
   <div class="cards">
-
     <!-- Tennis Racket Theorem -->
     <div class="card active">
       <div class="card-accent"></div>
@@ -294,6 +298,45 @@ canvas#stars {
       </div>
     </div>
 
+    <!-- Fluid Dynamics -->
+    <div class="card active">
+      <div class="card-accent"></div>
+      <div class="card-icon">🌊</div>
+      <div class="card-tag">Fluid Mechanics</div>
+      <h2 class="card-title">Fluid Dynamics</h2>
+      <p class="card-desc">How wings create lift through potential flow and circulation. Explore airfoil shapes, angle of attack, and the Kutta-Joukowski theorem with interactive 2D and 3D visualizations.</p>
+      <div class="card-foot">
+        <span class="card-badge live">Live</span>
+        <a class="card-link" href="/fluids">Explore <span class="arrow">→</span></a>
+      </div>
+    </div>
+
+    <!-- Numbers as Rotations -->
+    <div class="card active">
+      <div class="card-accent"></div>
+      <div class="card-icon">≡</div>
+      <div class="card-tag">Number Theory</div>
+      <h2 class="card-title">Numbers as Rotations</h2>
+      <p class="card-desc">Why does adding up the digits tell you if a number divides by 3? Because 10 is three laps around a triangle plus one step. Modular arithmetic as walking around shapes, with the math side by side.</p>
+      <div class="card-foot">
+        <span class="card-badge live">Live</span>
+        <a class="card-link" href="/numbers/simple/">Explore <span class="arrow">→</span></a>
+      </div>
+    </div>
+
+    <!-- Oort Cloud (separate site) -->
+    <div class="card active">
+      <div class="card-accent"></div>
+      <div class="card-icon">☄</div>
+      <div class="card-tag">Orbital Dynamics</div>
+      <h2 class="card-title">Oort Cloud</h2>
+      <p class="card-desc">The comet reservoir at the edge of the solar system, from the planets out to 100,000 AU. Based on a 2025 paper, see how galactic tides wind the inner cloud into a two-arm spiral.</p>
+      <div class="card-foot">
+        <span class="card-badge live">Live</span>
+        <a class="card-link" href="https://oort.connermccarthy.com/">Explore <span class="arrow">→</span></a>
+      </div>
+    </div>
+
     <!-- Quaternions & 4D Geometry -->
     <div class="card active">
       <div class="card-accent"></div>
@@ -302,7 +345,7 @@ canvas#stars {
       <h2 class="card-title">Quaternions & 4D Space</h2>
       <p class="card-desc">Why does the tennis racket flip? Explore how quaternions and 4D geometry reveal that the flip is smooth in quaternion space — the saddle point emerges only when projected to 3D.</p>
       <div class="card-foot">
-        <span class="card-badge live">Live</span>
+        <span class="card-badge wip">Work in progress</span>
         <a class="card-link" href="/tennis/why/4d">Explore <span class="arrow">→</span></a>
       </div>
     </div>
@@ -315,21 +358,8 @@ canvas#stars {
       <h2 class="card-title">The Dimension Tradeoff</h2>
       <p class="card-desc">As dimensions grow, geometric intuition breaks down in measurable ways — volume concentrates in shells, spheres flatten to pancakes, and nearest neighbors blur together. The same effect is also why AI embeddings work.</p>
       <div class="card-foot">
-        <span class="card-badge live">Live</span>
+        <span class="card-badge wip">Work in progress</span>
         <a class="card-link" href="/dimensions">Explore <span class="arrow">→</span></a>
-      </div>
-    </div>
-
-    <!-- Fluid Dynamics -->
-    <div class="card active">
-      <div class="card-accent"></div>
-      <div class="card-icon">🌊</div>
-      <div class="card-tag">Fluid Mechanics</div>
-      <h2 class="card-title">Fluid Dynamics</h2>
-      <p class="card-desc">How wings create lift through potential flow and circulation. Explore airfoil shapes, angle of attack, and the Kutta-Joukowski theorem with interactive 2D and 3D visualizations.</p>
-      <div class="card-foot">
-        <span class="card-badge live">Live</span>
-        <a class="card-link" href="/fluids">Explore <span class="arrow">→</span></a>
       </div>
     </div>
 

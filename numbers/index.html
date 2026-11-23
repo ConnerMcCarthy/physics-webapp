@@ -1,0 +1,690 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Numbers as Rotations</title>
+<meta name="description" content="Why adding up the digits tells you the remainder mod 3: modular arithmetic as walking around a triangle, with the math side by side.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Exo+2:wght@300;400;600;700&family=DM+Sans:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&family=STIX+Two+Text:ital,wght@0,400;0,600;1,400&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #030711;
+  --surface: rgba(255,255,255,0.03);
+  --surface-2: rgba(255,255,255,0.055);
+  --border: rgba(255,255,255,0.08);
+  --purple: #b28bff;
+  --blue: #5daaff;
+  --teal: #72ebda;
+  --gold: #ffd77e;
+  --text: rgba(255,255,255,0.9);
+  --text-muted: rgba(255,255,255,0.56);
+  --text-faint: rgba(255,255,255,0.28);
+  --math: 'STIX Two Text', 'Times New Roman', serif;
+  --mono: 'JetBrains Mono', ui-monospace, monospace;
+}
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+[hidden] { display: none !important; }
+html, body { min-height: 100%; background: var(--bg); color: var(--text); font-family: 'DM Sans', sans-serif; }
+body::before {
+  content: ''; position: fixed; inset: 0; pointer-events: none; z-index: 0;
+  background:
+    radial-gradient(ellipse 70% 50% at 15% 5%, rgba(93,170,255,0.06) 0%, transparent 60%),
+    radial-gradient(ellipse 60% 45% at 85% 90%, rgba(178,139,255,0.07) 0%, transparent 55%);
+}
+.page { position: relative; z-index: 1; max-width: 1200px; margin: 0 auto; padding: 36px 28px 72px; }
+
+/* ── Header ── */
+.top { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-bottom: 28px; }
+.back { font-family: var(--mono); font-size: 11px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--text-muted); text-decoration: none; }
+.back:hover { color: var(--blue); }
+.mode { display: inline-flex; padding: 3px; border-radius: 999px; background: var(--surface); border: 1px solid var(--border); }
+.mode a { font: 500 13px 'DM Sans', sans-serif; text-decoration: none; color: var(--text-muted); padding: 6px 14px; border-radius: 999px; transition: color .15s, background .15s; }
+.mode a.on { background: rgba(178,139,255,0.18); color: #fff; box-shadow: inset 0 0 0 1px rgba(178,139,255,0.5); }
+.mode a:not(.on):hover { color: var(--text); }
+h1 { font-family: 'Exo 2', sans-serif; font-weight: 700; font-size: clamp(32px, 5vw, 56px); letter-spacing: -0.03em; line-height: 1.02;
+  background: linear-gradient(120deg, #fff 30%, var(--purple) 75%, var(--blue)); -webkit-background-clip: text; background-clip: text; color: transparent; }
+.intro { margin-top: 12px; max-width: 760px; color: var(--text-muted); font-size: 16px; line-height: 1.6; }
+.intro b { color: var(--text); font-weight: 500; }
+
+/* ── Tabs ── */
+.tabs { display: flex; gap: 8px; margin: 28px 0 18px; flex-wrap: wrap; }
+.tab { font: 500 13px 'DM Sans', sans-serif; color: var(--text-muted); background: var(--surface); border: 1px solid var(--border);
+  border-radius: 999px; padding: 8px 14px 8px 10px; cursor: pointer; display: inline-flex; align-items: center; gap: 8px; transition: all .2s; }
+.tab .n { font-family: var(--mono); font-size: 11px; width: 20px; height: 20px; border-radius: 50%; display: grid; place-items: center;
+  background: rgba(255,255,255,0.06); color: var(--text-muted); }
+.tab:hover { color: var(--text); border-color: rgba(255,255,255,0.18); }
+.tab.on { color: #fff; border-color: rgba(178,139,255,0.55); background: rgba(178,139,255,0.10); }
+.tab.on .n { background: var(--purple); color: #120a24; }
+
+/* ── Stage ── */
+.stage { display: grid; grid-template-columns: minmax(0, 1.02fr) minmax(0, 1fr); gap: 18px; align-items: start; }
+.panel { background: var(--surface); border: 1px solid var(--border); border-radius: 20px; padding: 22px; min-width: 0; }
+.panel-label { font-family: var(--mono); font-size: 10px; letter-spacing: 0.26em; text-transform: uppercase; color: var(--text-faint); margin-bottom: 10px; display: flex; justify-content: space-between; }
+
+/* Visual */
+#viz { width: 100%; max-width: 470px; display: block; margin: 0 auto; overflow: visible; }
+.guide { fill: none; stroke: rgba(255,255,255,0.05); stroke-width: 1; stroke-dasharray: 2 6; }
+.edge { stroke: rgba(255,255,255,0.16); stroke-width: 1.5; }
+.chev { fill: none; stroke: rgba(255,255,255,0.35); stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
+.vtx circle { fill: #0b1222; stroke: rgba(255,255,255,0.28); stroke-width: 1.5; transition: stroke .25s, fill .25s; }
+.vtx .vl { font: 600 22px var(--math); fill: var(--text); text-anchor: middle; dominant-baseline: central; }
+.vtx .vcap { font: 400 10px var(--mono); letter-spacing: .12em; fill: var(--text-faint); text-anchor: middle; dominant-baseline: central; text-transform: uppercase; }
+.vtx.here circle { stroke: var(--blue); fill: rgba(93,170,255,0.14); }
+.vtx.zero .vcap { fill: rgba(114,235,218,0.6); }
+.vtx .pulse { fill: none; stroke: var(--blue); stroke-width: 2; opacity: 0; transform-box: fill-box; transform-origin: center; }
+.vtx .pulse.go { animation: pulse .6s ease-out; }
+@keyframes pulse { from { opacity: .9; transform: scale(1); } to { opacity: 0; transform: scale(1.9); } }
+.trail { fill: none; stroke-width: 2.6; stroke-linecap: round; opacity: .62; }
+.jlabel { font: 500 12px var(--mono); text-anchor: middle; dominant-baseline: central; opacity: .95; transition: opacity .8s; }
+.jlabel.fade { opacity: 0; }
+.cmain { font: 600 40px var(--math); fill: #fff; text-anchor: middle; dominant-baseline: central; }
+.csub { font: 400 11px var(--mono); letter-spacing: .1em; fill: var(--text-muted); text-anchor: middle; dominant-baseline: central; text-transform: uppercase; }
+#tok .halo { fill: rgba(93,170,255,0.18); }
+#tok .core { fill: #fff; filter: drop-shadow(0 0 6px rgba(93,170,255,0.9)); }
+#tok.spin .halo { fill: rgba(178,139,255,0.3); }
+.pill rect { fill: #0b1222; stroke-width: 1.4; }
+.pill text { font: 500 13px var(--mono); text-anchor: middle; dominant-baseline: central; }
+
+/* Ribbon: the number line wrapped into rows of 3 */
+.ribbon { margin: 14px auto 0; max-width: 420px; }
+.ribbon-cap { font-size: 12px; color: var(--text-muted); text-align: center; margin-bottom: 8px; }
+.rgrid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px; }
+.rhead { font: 400 10px var(--mono); letter-spacing: .12em; text-transform: uppercase; color: var(--text-faint); text-align: center; padding-bottom: 2px; }
+.rcell { font: 500 13px var(--mono); text-align: center; padding: 5px 0; border-radius: 7px; background: rgba(255,255,255,0.025); color: var(--text-faint); border: 1px solid transparent; transition: all .2s; }
+.rcell.seen { color: var(--text-muted); background: rgba(93,170,255,0.06); }
+.rcell.cur { color: #fff; border-color: var(--blue); background: rgba(93,170,255,0.18); }
+.rcell.mark9 { box-shadow: inset 0 0 0 1px rgba(178,139,255,0.6); }
+.rcell.mark10 { box-shadow: inset 0 0 0 1px rgba(93,170,255,0.7); }
+
+/* Digit chips */
+.chips { display: flex; justify-content: center; gap: 8px; margin-top: 14px; flex-wrap: wrap; }
+.chip { min-width: 52px; padding: 8px 8px 6px; border-radius: 12px; border: 1px solid var(--border); background: rgba(255,255,255,0.025); text-align: center; transition: all .2s; }
+.chip .d { font: 600 26px var(--math); line-height: 1; }
+.chip .p { font: 400 10px var(--mono); color: var(--text-faint); margin-top: 4px; }
+.chip.on { background: rgba(255,255,255,0.07); transform: translateY(-2px); }
+
+/* Controls */
+.ctl { margin-top: 14px; display: flex; flex-direction: column; gap: 12px; }
+.ctl:empty { display: none; }
+.transport { margin-top: 10px; }
+.ctl-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.btn { font: 500 13px 'DM Sans', sans-serif; color: var(--text); background: var(--surface-2); border: 1px solid var(--border); border-radius: 10px; padding: 8px 13px; cursor: pointer; transition: all .15s; }
+.btn:hover { border-color: rgba(255,255,255,0.22); }
+.btn.primary { background: rgba(93,170,255,0.16); border-color: rgba(93,170,255,0.45); color: #fff; }
+.btn.sel { background: rgba(178,139,255,0.16); border-color: rgba(178,139,255,0.55); color: #fff; }
+.btn:disabled { opacity: .4; cursor: default; }
+select, input[type=text] { font: 500 14px var(--mono); color: var(--text); background: rgba(0,0,0,0.3); border: 1px solid var(--border); border-radius: 10px; padding: 8px 10px; }
+input[type=text] { width: 150px; letter-spacing: .06em; }
+input[type=range] { flex: 1; min-width: 140px; accent-color: var(--purple); }
+.ctl-label { font-size: 13px; color: var(--text-muted); }
+.ctl-label b { font-family: var(--math); font-size: 18px; color: #fff; font-weight: 600; }
+.spacer { flex: 1; }
+
+/* Math panel */
+.kicker { font-family: var(--mono); font-size: 10px; letter-spacing: .26em; text-transform: uppercase; color: var(--purple); }
+.mtitle { font-family: 'Exo 2', sans-serif; font-weight: 600; font-size: 26px; letter-spacing: -0.01em; margin: 6px 0 14px; }
+.lead { color: var(--text-muted); line-height: 1.6; font-size: 15px; margin-bottom: 16px; }
+.lead em { color: var(--text); font-style: normal; font-weight: 500; }
+.eq { font-family: var(--math); font-size: 25px; line-height: 1.35; padding: 8px 14px; border-radius: 12px; margin: 6px 0; border-left: 2px solid transparent; transition: background .25s, border-color .25s; overflow-x: auto; white-space: nowrap; }
+.eq.big { font-size: 30px; }
+.eq .v { font-style: italic; }
+.eq .op { color: var(--text-muted); padding: 0 .12em; }
+.eq .md { font-size: .72em; color: var(--text-muted); }
+.row { display: flex; gap: 12px; align-items: baseline; padding: 8px 14px; border-radius: 12px; border-left: 2px solid transparent; transition: background .25s, border-color .25s; color: var(--text-muted); font-size: 14.5px; line-height: 1.5; }
+.row .tag { font-family: var(--math); font-size: 19px; color: var(--text); white-space: nowrap; min-width: 92px; }
+[data-hl] { transition: background .25s, border-color .25s, color .25s; }
+span[data-hl] { border-radius: 6px; padding: 0 .16em; }
+.eq.hl, .row.hl, .pat.hl { background: rgba(178,139,255,0.12); border-left-color: var(--purple); }
+span[data-hl].hl { background: rgba(178,139,255,0.22); }
+.note { margin-top: 14px; padding: 12px 14px; border-radius: 12px; background: rgba(93,170,255,0.06); border: 1px solid rgba(93,170,255,0.16); color: var(--text-muted); font-size: 14px; line-height: 1.6; }
+.note b, .note strong { color: var(--text); font-weight: 600; }
+.tally { font-family: var(--mono); font-size: 12px; color: var(--text-muted); padding: 4px 14px; letter-spacing: .04em; }
+.tally b { color: #fff; font-weight: 500; }
+.patterns { margin-top: 14px; display: grid; gap: 4px; }
+.pat { font-family: var(--math); font-size: 19px; padding: 4px 14px; border-radius: 10px; border-left: 2px solid transparent; color: var(--text-muted); }
+.pat .nines { color: var(--purple); }
+.rule { padding: 16px; border-radius: 14px; border: 1px solid rgba(114,235,218,0.3); background: rgba(114,235,218,0.06); font-size: 15.5px; line-height: 1.6; margin-bottom: 14px; }
+.rule b { color: var(--teal); }
+.chain { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; font-family: var(--math); font-size: 23px; padding: 8px 14px; }
+.chain .arrow { color: var(--text-faint); font-size: 18px; }
+.chain .sum { font-size: 15px; color: var(--text-muted); }
+.verdict { font-size: 15px; padding: 10px 14px; border-radius: 12px; margin-top: 8px; }
+.verdict.yes { background: rgba(114,235,218,0.1); color: var(--teal); }
+.verdict.no { background: rgba(255,255,255,0.04); color: var(--text-muted); }
+.teasers { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 16px; }
+.teaser { border: 1px solid var(--border); border-radius: 14px; padding: 12px 14px; font-size: 13.5px; line-height: 1.55; color: var(--text-muted); }
+.teaser h4 { font: 600 14px 'Exo 2', sans-serif; color: var(--text); margin-bottom: 4px; display: flex; justify-content: space-between; gap: 8px; }
+.soon { font: 500 9px var(--mono); letter-spacing: .14em; text-transform: uppercase; color: var(--gold); border: 1px solid rgba(255,215,126,0.35); border-radius: 999px; padding: 2px 7px; align-self: center; white-space: nowrap; }
+.nav { display: flex; justify-content: space-between; margin-top: 20px; padding-top: 16px; border-top: 1px solid var(--border); }
+.foot { margin-top: 40px; text-align: center; font-family: var(--mono); font-size: 11px; color: var(--text-faint); letter-spacing: .1em; }
+
+@media (max-width: 900px) {
+  /* Keep the picture on screen while the math scrolls underneath it. */
+  .stage { display: flex; flex-direction: column; gap: 14px; }
+  .panel.visual { display: contents; }
+  .viz-sticky { order: 1; position: sticky; top: 0; z-index: 5; background: rgba(3,7,17,0.94); backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px); padding: 6px 16px 10px; margin: 0 -16px; width: calc(100% + 32px); border-bottom: 1px solid var(--border); }
+  .viz-sticky .panel-label { display: none; }
+  #viz { max-height: 36vh; }
+  .transport { margin-top: 4px; gap: 8px; }
+  .transport .btn { padding: 7px 11px; }
+  .transport .ctl-label { display: none; }
+  #chips { order: 2; margin-top: 0; }
+  #sceneCtl { order: 3; margin-top: 0; }
+  .panel.mathp { order: 4; }
+  #ribbon { order: 5; margin-top: 0; }
+  .page { padding: 24px 16px 56px; }
+  .eq { font-size: 22px; } .eq.big { font-size: 26px; }
+  .teasers { grid-template-columns: 1fr; }
+  .top { margin-bottom: 18px; }
+}
+@media (max-width: 480px) {
+  .tab .t { display: none; }
+  .tab { padding: 6px; }
+  .panel { padding: 16px; }
+  .row .tag { min-width: 76px; font-size: 17px; }
+}
+</style>
+</head>
+<body>
+<div class="page">
+  <div class="top">
+    <a class="back" href="/">← Physics</a>
+    <nav class="mode" aria-label="Version"><a href="/numbers/kids/">Kids</a><a href="/numbers/simple/">Simple</a><a href="/numbers/" class="on" aria-current="page">Full</a></nav>
+  </div>
+  <h1>Numbers as rotations</h1>
+  <p class="intro">Why does adding up a number's digits tell you whether it divides by 3? Because <b>“mod 3” is a walk around a triangle</b>, and in base 10 every place value — 1, 10, 100, 1000 — lands exactly <b>one corner over</b>. Follow the walk on the left and the algebra on the right; they are the same argument told twice.</p>
+
+  <div class="tabs" id="tabs"></div>
+
+  <div class="stage">
+    <section class="panel visual" aria-label="Visual">
+      <div class="viz-sticky">
+        <div class="panel-label"><span>The walk</span><span>clockwise · one edge = one step</span></div>
+        <svg id="viz" viewBox="-10 4 420 420" role="img" aria-label="A triangle with corners 0, 1 and 2; a token walks around it clockwise"></svg>
+        <div class="ctl-row transport">
+          <button class="btn primary" id="playBtn">▶ Play</button>
+          <button class="btn" id="stepBtn" title="One move at a time">Step</button>
+          <button class="btn" id="resetBtn">↺ Restart</button>
+          <span class="spacer"></span>
+          <label class="ctl-label" for="speed">Speed</label>
+          <select id="speed"><option value="0.5">0.5×</option><option value="1" selected>1×</option><option value="2">2×</option><option value="4">4×</option></select>
+        </div>
+      </div>
+      <div class="chips" id="chips" hidden></div>
+      <div class="ctl" id="sceneCtl"></div>
+      <div class="ribbon" id="ribbon" hidden></div>
+    </section>
+
+    <section class="panel mathp" aria-label="Math">
+      <div class="panel-label"><span>The math</span><span id="stepOf"></span></div>
+      <div class="kicker" id="kicker"></div>
+      <h2 class="mtitle" id="mtitle"></h2>
+      <div id="math"></div>
+      <div class="nav">
+        <button class="btn" id="prevBtn">← Back</button>
+        <button class="btn primary" id="nextBtn">Next →</button>
+      </div>
+    </section>
+  </div>
+
+  <div class="foot">physics.connermccarthy.com/numbers</div>
+</div>
+
+<script>
+(() => {
+'use strict';
+const $ = s => document.querySelector(s);
+const NS = 'http://www.w3.org/2000/svg';
+const C = { x: 200, y: 214 }, R = 140;
+const V = [0, 1, 2].map(k => { const a = (-90 + 120 * k) * Math.PI / 180; return { x: C.x + R * Math.cos(a), y: C.y + R * Math.sin(a) }; });
+const BLUE = '#5daaff', PURPLE = '#b28bff', TEAL = '#72ebda';
+// Colour per place value: ones, tens, hundreds, thousands, …
+const PLACE = ['#5daaff', '#b28bff', '#72ebda', '#ffd77e', '#ff8fb8', '#ffae6b', '#9dffa6', '#c9b8ff', '#ff8080'];
+const PLACE_NAME = ['ones', 'tens', 'hundreds', 'thousands', 'ten-thousands', 'hundred-thousands', 'millions', 'ten-millions', 'hundred-millions'];
+const fmt = n => Number(n).toLocaleString('en-US');
+const pow10 = k => 10 ** k;
+const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+function el(tag, attrs, parent) {
+  const e = document.createElementNS(NS, tag);
+  for (const k in attrs || {}) e.setAttribute(k, attrs[k]);
+  if (parent) parent.appendChild(e);
+  return e;
+}
+
+/* ───────── Static drawing ───────── */
+const svg = $('#viz');
+el('circle', { cx: C.x, cy: C.y, r: R, class: 'guide' }, svg);
+for (let k = 0; k < 3; k++) {
+  const a = V[k], b = V[(k + 1) % 3];
+  el('line', { x1: a.x, y1: a.y, x2: b.x, y2: b.y, class: 'edge' }, svg);
+  const mx = (a.x + b.x) / 2, my = (a.y + b.y) / 2, L = Math.hypot(b.x - a.x, b.y - a.y);
+  const dx = (b.x - a.x) / L, dy = (b.y - a.y) / L, nx = -dy, ny = dx;
+  el('path', { class: 'chev', d: `M${mx - dx * 5 + nx * 6},${my - dy * 5 + ny * 6} L${mx + dx * 6},${my + dy * 6} L${mx - dx * 5 - nx * 6},${my - dy * 5 - ny * 6}` }, svg);
+}
+const gTrail = el('g', {}, svg);
+const gFx = el('g', {}, svg);
+const vtx = V.map((p, k) => {
+  const g = el('g', { class: 'vtx' + (k === 0 ? ' zero' : '') }, svg);
+  const pulse = el('circle', { cx: p.x, cy: p.y, r: 27, class: 'pulse' }, g);
+  el('circle', { cx: p.x, cy: p.y, r: 27 }, g);
+  el('text', { x: p.x, y: p.y + 1, class: 'vl' }, g).textContent = k;
+  el('text', { x: p.x, y: p.y + (k === 0 ? -42 : 44), class: 'vcap' }, g).textContent = k === 0 ? 'remainder 0' : 'remainder ' + k;
+  return { g, pulse };
+});
+const cMain = el('text', { x: C.x, y: C.y + 18, class: 'cmain' }, svg);
+const cSub = el('text', { x: C.x, y: C.y + 52, class: 'csub' }, svg);
+const tok = el('g', { id: 'tok' }, svg);
+el('circle', { r: 17, class: 'halo' }, tok);
+el('circle', { r: 8.5, class: 'core' }, tok);
+
+/* ───────── Geometry ───────── */
+const ease = t => t < .5 ? 2 * t * t : 1 - (-2 * t + 2) ** 2 / 2;
+const lerp = (a, b, t) => ({ x: a.x + (b.x - a.x) * t, y: a.y + (b.y - a.y) * t });
+function arcCtrl(a, b, k) {
+  const mx = (V[a].x + V[b].x) / 2, my = (V[a].y + V[b].y) / 2;
+  const dx = mx - C.x, dy = my - C.y, L = Math.hypot(dx, dy);
+  const off = 118 + 30 * Math.min(k, 4);
+  return { x: mx + dx / L * off, y: my + dy / L * off, nx: dx / L, ny: dy / L };
+}
+function arcPt(a, b, k, t) {
+  const c = arcCtrl(a, b, k), p = V[a], q = V[b], u = 1 - t;
+  return { x: u * u * p.x + 2 * u * t * c.x + t * t * q.x, y: u * u * p.y + 2 * u * t * c.y + t * t * q.y };
+}
+
+/* ───────── Board state ───────── */
+const state = { pos: 0, speed: reduced ? 4 : 1 };
+$('#speed').value = String(state.speed);
+function setTok(p) { tok.setAttribute('transform', `translate(${p.x},${p.y})`); }
+function markHere() { vtx.forEach((v, k) => v.g.classList.toggle('here', k === state.pos)); }
+function pulse(k) { const p = vtx[k].pulse; p.classList.remove('go'); void p.getBBox(); p.classList.add('go'); }
+function resetBoard() {
+  gTrail.replaceChildren(); gFx.replaceChildren();
+  state.pos = 0; setTok(V[0]); markHere(); tok.classList.remove('spin');
+  center('', '');
+}
+function center(main, sub) { cMain.textContent = main; cSub.textContent = sub; }
+function addTrail(type, a, b, color, k) {
+  const p = V[a], q = V[b];
+  const d = type === 'arc' ? (() => { const c = arcCtrl(a, b, k); return `M${p.x},${p.y} Q${c.x},${c.y} ${q.x},${q.y}`; })() : `M${p.x},${p.y} L${q.x},${q.y}`;
+  el('path', { d, class: 'trail', stroke: color }, gTrail);
+}
+
+/* ───────── Math highlighting ───────── */
+function hl(ids) {
+  const want = new Set(String(ids || '').split(/\s+/).filter(Boolean));
+  document.querySelectorAll('#math [data-hl]').forEach(e => {
+    e.classList.toggle('hl', e.dataset.hl.split(/\s+/).some(x => want.has(x)));
+  });
+}
+
+/* ───────── Sequencer: a list of moves played one at a time ───────── */
+const seq = { moves: [], i: 0, playing: false, busy: false, token: 0, done: null };
+function seqLoad(moves, done) {
+  seq.token++; seq.moves = moves; seq.i = 0; seq.playing = false; seq.busy = false; seq.done = done || null; syncBtns();
+}
+function seqAdvance() {
+  if (seq.busy || seq.i >= seq.moves.length) return;
+  const t = seq.token, m = seq.moves[seq.i++];
+  seq.busy = true; syncBtns();
+  if (m.hl !== undefined) hl(m.hl);
+  if (m.before) m.before();
+  animate(m, t, () => {
+    if (t !== seq.token) return;
+    seq.busy = false;
+    if (m.after) m.after();
+    if (seq.i >= seq.moves.length) {
+      seq.playing = false; syncBtns();
+      if (seq.done) seq.done();
+      return;
+    }
+    syncBtns();
+    if (seq.playing) setTimeout(() => { if (t === seq.token && seq.playing) seqAdvance(); }, (m.gap ?? 90) / state.speed);
+  });
+}
+function seqPlay() { if (seq.i >= seq.moves.length && !seq.busy) { scenes[cur].start(true); return; } seq.playing = true; syncBtns(); seqAdvance(); }
+function seqPause() { seq.playing = false; syncBtns(); }
+function syncBtns() {
+  const finished = seq.i >= seq.moves.length && !seq.busy;
+  $('#playBtn').textContent = seq.playing ? '❚❚ Pause' : finished ? '↻ Replay' : '▶ Play';
+  $('#stepBtn').disabled = seq.playing || finished;
+}
+
+function animate(m, t, cb) {
+  const sp = state.speed;
+  if (m.type === 'pause') { setTimeout(() => t === seq.token && cb(), m.ms / sp); return; }
+  if (m.type === 'call') { cb(); return; }
+  if (m.type === 'long') return animLong(m, t, cb);
+  if (m.type === 'drop') return animDrop(m, t, cb);
+  const a = state.pos, b = (a + 1) % 3;
+  const dur = (m.dur || (m.type === 'arc' ? 640 : 360)) / sp;
+  const pt = m.type === 'arc' ? x => arcPt(a, b, m.k, x) : x => lerp(V[a], V[b], x);
+  let label = null;
+  if (m.type === 'arc' && m.label) {
+    const c = arcCtrl(a, b, m.k), mid = arcPt(a, b, m.k, .5);
+    label = el('text', { x: mid.x + c.nx * 15, y: mid.y + c.ny * 15, class: 'jlabel', fill: m.color }, gFx);
+    label.textContent = m.label;
+  }
+  const t0 = performance.now();
+  const frame = now => {
+    if (t !== seq.token) { if (label) label.remove(); return; }
+    const x = Math.min(1, (now - t0) / dur);
+    setTok(pt(ease(x)));
+    if (x < 1) return requestAnimationFrame(frame);
+    addTrail(m.type, a, b, m.color, m.k);
+    state.pos = b; markHere(); pulse(b);
+    if (label) { label.classList.add('fade'); setTimeout(() => label.remove(), 900); }
+    cb();
+  };
+  requestAnimationFrame(frame);
+}
+// Many steps as one smooth spin (used for "walk it the long way").
+function animLong(m, t, cb) {
+  const a0 = state.pos, n = m.steps, dur = m.dur / state.speed, t0 = performance.now();
+  tok.classList.add('spin');
+  const frame = now => {
+    if (t !== seq.token) { tok.classList.remove('spin'); return; }
+    const x = Math.min(1, (now - t0) / dur), p = n * ease(x);
+    const s = Math.min(Math.floor(p), n - 1), f = p - s, a = (a0 + s) % 3;
+    setTok(n === 0 ? V[a0] : lerp(V[a], V[(a + 1) % 3], x >= 1 ? 1 : f));
+    if (m.tick) m.tick(p, x);
+    if (x < 1) return requestAnimationFrame(frame);
+    tok.classList.remove('spin');
+    state.pos = (a0 + n) % 3; setTok(V[state.pos]); markHere(); pulse(state.pos);
+    cb();
+  };
+  requestAnimationFrame(frame);
+}
+// A labelled pill flies from the centre to a corner (used for the digit-sum chain).
+function animDrop(m, t, cb) {
+  const g = el('g', { class: 'pill' }, gFx);
+  const w = 16 + 8.4 * m.text.length;
+  el('rect', { x: -w / 2, y: -13, width: w, height: 26, rx: 13, stroke: m.color }, g);
+  el('text', { fill: m.color }, g).textContent = m.text;
+  const tgt = V[m.target], ix = (C.x - tgt.x) / R, iy = (C.y - tgt.y) / R;
+  const end = { x: tgt.x + ix * (50 + m.idx * 30), y: tgt.y + iy * (50 + m.idx * 30) };
+  const start = { x: C.x, y: C.y - 20 };
+  const dur = 700 / state.speed, t0 = performance.now();
+  const frame = now => {
+    if (t !== seq.token) { g.remove(); return; }
+    const x = Math.min(1, (now - t0) / dur), p = lerp(start, end, ease(x));
+    g.setAttribute('transform', `translate(${p.x},${p.y})`);
+    g.setAttribute('opacity', Math.min(1, x * 3));
+    if (x < 1) return requestAnimationFrame(frame);
+    pulse(m.target); cb();
+  };
+  requestAnimationFrame(frame);
+}
+
+/* ───────── Ribbon & chips ───────── */
+function showRibbon(maxN, marks) {
+  const r = $('#ribbon');
+  r.hidden = false;
+  let h = '<div class="ribbon-cap">Same walk, unrolled: write the numbers in rows of 3. <br>The column you land in is the corner.</div><div class="rgrid">';
+  h += [0, 1, 2].map(k => `<div class="rhead">corner ${k}</div>`).join('');
+  for (let i = 0; i <= maxN; i++) h += `<div class="rcell${marks && marks[i] ? ' ' + marks[i] : ''}" data-i="${i}">${i}</div>`;
+  r.innerHTML = h + '</div>';
+}
+function setRibbon(s) {
+  document.querySelectorAll('#ribbon .rcell').forEach(c => {
+    const i = +c.dataset.i;
+    c.classList.toggle('cur', i === s);
+    c.classList.toggle('seen', i < s);
+  });
+}
+function showChips(digits) {
+  const c = $('#chips');
+  c.hidden = false;
+  const n = digits.length;
+  c.innerHTML = digits.map((d, i) => {
+    const k = n - 1 - i;
+    return `<div class="chip" data-k="${k}"><div class="d" style="color:${PLACE[k % PLACE.length]}">${d}</div><div class="p">×${fmt(pow10(k))}</div></div>`;
+  }).join('');
+}
+function chipOn(k) { document.querySelectorAll('#chips .chip').forEach(c => c.classList.toggle('on', +c.dataset.k === k)); }
+
+/* ───────── Scenes ───────── */
+const math = $('#math'), ctl = $('#sceneCtl');
+const digitsOf = s => s.split('').map(Number);
+const cleanNum = (v, max) => (String(v).replace(/\D/g, '').replace(/^0+(?=\d)/, '') || '0').slice(0, max);
+
+const scenes = [
+/* 1 ── Mod 3 is a walk */
+{
+  id: 'walk', tab: 'Walk', kicker: 'Step 1 · What “mod 3” means', title: 'Counting around a triangle',
+  n: 7,
+  mount() {
+    ctl.innerHTML = `<div class="ctl-row"><span class="ctl-label">walk <b id="s1v">${this.n}</b> steps</span><input type="range" id="s1r" min="0" max="30" value="${this.n}" aria-label="number of steps"></div>`;
+    $('#s1r').addEventListener('input', e => { this.n = +e.target.value; $('#s1v').textContent = this.n; this.start(true); });
+  },
+  start(play) {
+    const n = this.n;
+    math.innerHTML = `
+      <p class="lead">Put the numbers on a triangle instead of a line. To find <em>${n} mod 3</em>, start at corner 0 and walk ${n} steps clockwise. Where you stop is the answer.</p>
+      <div class="eq"><span id="s1n" class="v">0</span> <span class="op">=</span> 3 <span class="op">×</span> <span data-hl="q" id="s1q">0</span> <span class="op">+</span> <span data-hl="r" id="s1rr">0</span></div>
+      <div class="row" data-hl="q"><span class="tag">3 × <span class="v" style="font-style:italic">q</span></span>full laps. Each lap of 3 steps brings you back to where you started, so laps change nothing.</div>
+      <div class="row" data-hl="r"><span class="tag"><span style="font-style:italic">r</span></span>the steps left over. This is the corner you land on.</div>
+      <div class="eq big" data-hl="res" id="s1res">0 ≡ 0 <span class="md">(mod 3)</span></div>
+      <div class="note"><b>≡ (mod 3)</b> just means <b>“lands on the same corner.”</b> Arithmetic mod 3 forgets how many laps you made and remembers only where you are.</div>`;
+    resetBoard();
+    showRibbon(Math.max(11, Math.ceil((n + 1) / 3) * 3 - 1));
+    const upd = s => {
+      const q = Math.floor(s / 3), r = s % 3;
+      $('#s1n').textContent = s; $('#s1q').textContent = q; $('#s1rr').textContent = r;
+      $('#s1res').innerHTML = `${s} ≡ ${r} <span class="md">(mod 3)</span>`;
+      center(String(s), s ? `${q} lap${q === 1 ? '' : 's'} + ${r} step${r === 1 ? '' : 's'}` : 'start');
+      setRibbon(s);
+    };
+    upd(0); hl('');
+    const moves = [];
+    for (let i = 1; i <= n; i++) moves.push({ type: 'step', color: BLUE, hl: i % 3 === 0 ? 'q' : 'r', after: () => upd(i) });
+    seqLoad(moves, () => hl('res'));
+    if (play) seqPlay();
+  }
+},
+/* 2 ── 10 = 9 + 1 */
+{
+  id: 'ten', tab: 'Ten', kicker: 'Step 2 · Why 10 is special', title: 'Ten steps = three laps + one',
+  mount() { ctl.innerHTML = ''; },
+  start(play) {
+    math.innerHTML = `
+      <p class="lead">Walk <em>10 steps</em>. The first nine take you around the triangle exactly three times. The tenth is left over.</p>
+      <div class="eq" data-hl="split">10 <span class="op">=</span> <span data-hl="nine" style="color:${PURPLE}">9</span> <span class="op">+</span> <span data-hl="plus1" style="color:${BLUE}">1</span></div>
+      <div class="row" data-hl="nine"><span class="tag" style="color:${PURPLE}">9 = 3 × 3</span>three full laps: back at corner 0, as if you never moved</div>
+      <div class="row" data-hl="plus1"><span class="tag" style="color:${BLUE}">+ 1</span>one extra step: corner 1</div>
+      <div class="eq big" data-hl="result">10 ≡ 1 <span class="md">(mod 3)</span></div>
+      <div class="note">This is the whole secret. <strong>10 − 1 = 9</strong>, and 9 is a multiple of 3. So on the triangle, <b>a step of size 10 is indistinguishable from a step of size 1</b>. Base ten is “one more than whole laps.”</div>`;
+    resetBoard();
+    showRibbon(11, { 9: 'mark9', 10: 'mark10' });
+    const upd = s => {
+      setRibbon(s);
+      const q = Math.floor(s / 3), r = s % 3;
+      center(String(s), s === 9 ? '3 laps · back at 0' : s === 10 ? '3 laps + 1 step' : s ? `${q} lap${q === 1 ? '' : 's'} + ${r}` : 'start');
+    };
+    upd(0); hl('');
+    const moves = [];
+    for (let i = 1; i <= 10; i++) {
+      moves.push({ type: 'step', color: i <= 9 ? PURPLE : BLUE, hl: i <= 9 ? 'nine' : 'plus1', after: () => upd(i) });
+      if (i === 9) moves.push({ type: 'pause', ms: 700, hl: 'nine' });
+    }
+    seqLoad(moves, () => hl('result split'));
+    if (play) seqPlay();
+  }
+},
+/* 3 ── Every power of ten is one step */
+{
+  id: 'powers', tab: 'Powers', kicker: 'Step 3 · 100, 1000, …', title: 'Every place value is one step',
+  k: 2,
+  mount() {
+    ctl.innerHTML = `<div class="ctl-row"><span class="ctl-label">Show</span>${[2, 3, 4].map(k => `<button class="btn${k === this.k ? ' sel' : ''}" data-k="${k}">${fmt(pow10(k))}</button>`).join('')}</div>`;
+    ctl.querySelectorAll('[data-k]').forEach(b => b.addEventListener('click', () => {
+      this.k = +b.dataset.k;
+      ctl.querySelectorAll('[data-k]').forEach(x => x.classList.toggle('sel', x === b));
+      this.start(true);
+    }));
+  },
+  start(play) {
+    const k = this.k, P = pow10(k), J = pow10(k - 1), col = PLACE[k - 1];
+    const nines = '9'.repeat(k);
+    math.innerHTML = `
+      <p class="lead">We know a jump of <em>${fmt(J)}</em> lands one corner over${J === 10 ? ' (step 2)' : ''}. And ${fmt(P)} is just <em>ten</em> of those jumps.</p>
+      <div class="eq" data-hl="prod">${fmt(P)} <span class="op">=</span> 10 <span class="op">×</span> <span style="color:${col}">${fmt(J)}</span></div>
+      <div class="row" data-hl="each"><span class="tag" style="color:${col}">${fmt(J)} ≡ 1</span>each jump of ${fmt(J)} moves one corner</div>
+      <div class="row" data-hl="sum"><span class="tag">10 × 1</span>so ten jumps move ten corners…</div>
+      <div class="row" data-hl="ten"><span class="tag">10 ≡ 1</span>…and ten steps is one step (step 2)</div>
+      <div class="eq big" data-hl="result">${fmt(P)} ≡ 1 <span class="md">(mod 3)</span></div>
+      <div class="patterns">
+        ${[1, 2, 3, 4].map(j => `<div class="pat" data-hl="p${j}">${fmt(pow10(j))} = <span class="nines">${fmt(+'9'.repeat(j))}</span> + 1</div>`).join('')}
+      </div>
+      <div class="note">The other way to see it: subtract 1 from any power of ten and you get <strong>all nines</strong>. ${fmt(+nines)} = 9 × ${fmt(+'1'.repeat(k))}, a multiple of 3, so ${fmt(P)} is whole laps <b>plus exactly one step</b>. Every place value works this way.</div>`;
+    resetBoard(); hl('');
+    let j = 0;
+    const upd = () => center(fmt(j * J), j ? `${j} jump${j === 1 ? '' : 's'} = ${j} step${j === 1 ? '' : 's'}` : `jumps of ${fmt(J)}`);
+    upd();
+    const moves = [];
+    for (let i = 1; i <= 10; i++) moves.push({ type: 'arc', k: k - 1, color: col, label: '+' + fmt(J), hl: 'each prod', gap: 140, after: () => { j = i; upd(); } });
+    moves.push({ type: 'pause', ms: 650, hl: 'sum' });
+    moves.push({ type: 'pause', ms: 650, hl: 'ten' });
+    seqLoad(moves, () => hl(`result p${k}`));
+    if (play) seqPlay();
+  }
+},
+/* 4 ── Any number: digits become steps */
+{
+  id: 'digits', tab: 'Digits', kicker: 'Step 4 · Any number', title: 'Each digit is a number of steps',
+  num: '472',
+  mount() {
+    ctl.innerHTML = `<div class="ctl-row"><span class="ctl-label">Number</span><input type="text" id="s4n" inputmode="numeric" value="${this.num}" maxlength="9" aria-label="number"><button class="btn" id="s4go">Walk it</button><button class="btn" id="s4long">Check: walk the long way</button></div>`;
+    const go = () => { this.num = cleanNum($('#s4n').value, 9); $('#s4n').value = this.num; this.start(true); };
+    $('#s4go').addEventListener('click', go);
+    $('#s4n').addEventListener('keydown', e => { if (e.key === 'Enter') go(); });
+    $('#s4long').addEventListener('click', () => { this.num = cleanNum($('#s4n').value, 9); $('#s4n').value = this.num; this.long(); });
+  },
+  render() {
+    const s = this.num, ds = digitsOf(s), n = ds.length, N = +s, sum = ds.reduce((a, b) => a + b, 0);
+    const term = (d, k, one) => `<span data-hl="t${k}" style="color:${PLACE[k % PLACE.length]}">${d}<span class="op">×</span>${one ? '1' : fmt(pow10(k))}</span>`;
+    const terms = one => ds.map((d, i) => term(d, n - 1 - i, one)).join(' <span class="op">+</span> ');
+    math.innerHTML = `
+      <p class="lead">Write the number by its digits. Each place value — 1, 10, 100, … — is a jump that <em>lands one corner over</em> (step 3). So a digit <em>d</em> in any place is just <em>d</em> single steps.</p>
+      <div class="eq" data-hl="expand">${fmt(N)} <span class="op">=</span> ${terms(false)}</div>
+      <div class="eq" data-hl="collapse"><span class="op">≡</span> ${terms(true)}</div>
+      <div class="eq" data-hl="sum"><span class="op">=</span> ${ds.join(' <span class="op">+</span> ')} <span class="op">=</span> <b>${sum}</b></div>
+      <div class="tally" id="s4t">jumps so far <b>0</b> · value so far <b>0</b></div>
+      <div class="eq big" data-hl="result">${fmt(N)} ≡ ${sum}${sum !== sum % 3 ? ` ≡ ${sum % 3}` : ''} <span class="md">(mod 3)</span></div>
+      <div class="row" data-hl="check"><span class="tag">check</span>${fmt(N)} = 3 × ${fmt(Math.floor(N / 3))} + ${N % 3} — the long way lands on corner ${N % 3} too.</div>
+      <div class="note">The walk only cares how many <b>corners</b> each jump moves, never how big the number is. That's why ${fmt(N)} and ${sum} land in the same place.</div>`;
+    resetBoard(); hl(''); showChips(ds); chipOn(-1);
+    return { ds, n, N, sum };
+  },
+  start(play) {
+    const { ds, n } = this.render();
+    let jumps = 0, val = 0;
+    const tally = () => { $('#s4t').innerHTML = `jumps so far <b>${jumps}</b> · value so far <b>${fmt(val)}</b>`; center(fmt(val), `${jumps} step${jumps === 1 ? '' : 's'}`); };
+    tally();
+    const moves = [];
+    ds.forEach((d, i) => {
+      const k = n - 1 - i, col = PLACE[k % PLACE.length];
+      if (d === 0) moves.push({ type: 'pause', ms: 450, hl: `t${k}`, before: () => chipOn(k) });
+      for (let j = 0; j < d; j++) moves.push({ type: 'arc', k, color: col, label: '+' + fmt(pow10(k)), hl: `t${k}`, gap: 60, dur: 520,
+        before: () => chipOn(k), after: () => { jumps++; val += pow10(k); tally(); } });
+    });
+    moves.push({ type: 'pause', ms: 500, hl: 'collapse sum', before: () => chipOn(-1) });
+    seqLoad(moves, () => hl('result'));
+    if (play) seqPlay();
+  },
+  long() {
+    const { N } = this.render();
+    // Big numbers: spin through 60 extra (= 20 laps) + the remainder; the counter scales to N. The landing corner is exact.
+    const real = N <= 3000, steps = real ? N : 60 + N % 3;
+    const dur = real ? Math.min(6500, 900 + N * 6) : 4500;
+    center('0', 'the long way');
+    seqLoad([{ type: 'long', steps, dur, hl: 'expand',
+      tick: (p) => { const v = real ? Math.floor(p) : Math.floor(p / steps * N); center(fmt(v), `${fmt(Math.floor(v / 3))} laps${real ? '' : ' · sped up'}`); } }],
+      () => { center(fmt(N), `${fmt(Math.floor(N / 3))} laps + ${N % 3}`); hl('check'); });
+    seqPlay();
+  }
+},
+/* 5 ── The rule */
+{
+  id: 'rule', tab: 'The rule', kicker: 'Step 5 · Putting it together', title: 'The add-up-the-digits rule',
+  num: '472',
+  mount() {
+    ctl.innerHTML = `<div class="ctl-row"><span class="ctl-label">Number</span><input type="text" id="s5n" inputmode="numeric" value="${this.num}" maxlength="15" aria-label="number"><button class="btn" id="s5go">Test</button></div>
+      <div class="ctl-row">${['471', '2026', '123456789', '1000001'].map(x => `<button class="btn" data-try="${x}">${fmt(+x)}</button>`).join('')}</div>`;
+    const go = v => { this.num = cleanNum(v, 15); $('#s5n').value = this.num; this.start(true); };
+    $('#s5go').addEventListener('click', () => go($('#s5n').value));
+    $('#s5n').addEventListener('keydown', e => { if (e.key === 'Enter') go($('#s5n').value); });
+    ctl.querySelectorAll('[data-try]').forEach(b => b.addEventListener('click', () => go(b.dataset.try)));
+  },
+  start(play) {
+    const chain = [this.num];
+    while (chain[chain.length - 1].length > 1) chain.push(String(digitsOf(chain[chain.length - 1]).reduce((a, b) => a + b, 0)));
+    const last = +chain[chain.length - 1], r = last % 3;
+    const big = s => s.length > 6 ? s.replace(/\B(?=(\d{3})+(?!\d))/g, ',') : fmt(+s);
+    const links = chain.map((c, i) => {
+      const sumTxt = i < chain.length - 1 ? `<span class="arrow">→</span><span class="sum">${digitsOf(c).join('+')} =</span>` : '';
+      return `<span data-hl="c${i}">${big(c)}</span>${sumTxt}`;
+    }).join(' ');
+    math.innerHTML = `
+      <div class="rule">A number and the sum of its digits <b>always land on the same corner</b>. So a number is divisible by 3 exactly when its digit sum is — and you can keep adding digits until one is left.</div>
+      <div class="chain">${links}</div>
+      <div class="row" data-hl="walk"><span class="tag">${last} = 3×${Math.floor(last / 3)} + ${r}</span>walk the last one: ${last} step${last === 1 ? '' : 's'} lands on corner ${r}</div>
+      <div class="verdict ${r === 0 ? 'yes' : 'no'}" data-hl="verdict">${r === 0 ? `Corner 0: ${big(this.num)} <b>is divisible by 3</b>.` : `Corner ${r}: ${big(this.num)} leaves remainder ${r}, so it is <b>not</b> divisible by 3.`}</div>
+      <div class="note"><b>Why it works:</b> every place value (1, 10, 100, …) is whole laps plus one step, because <strong>10 − 1 = 9</strong> is a multiple of 3. So each digit counts as that many single steps, and adding the digits <em>is</em> walking the number.</div>
+      <div class="teasers">
+        <div class="teaser"><h4>Same trick, 9 corners</h4>10 − 1 = 9 is a multiple of 9 too, so on a 9-sided shape every place value is still one step. The digit sum gives the remainder mod 9: “casting out nines.”</div>
+        <div class="teaser"><h4>One step short <span class="soon">Coming next</span></h4>On an 11-sided shape, 10 = 11 − 1: a jump of 10 lands one corner <em>backwards</em>. Place values alternate +1, −1, which gives the alternating-digit rule for 11.</div>
+      </div>`;
+    resetBoard(); hl('');
+    center('', '');
+    const moves = [];
+    for (let i = 1; i <= last; i++) moves.push({ type: 'step', color: BLUE, hl: 'walk', dur: 300, gap: 50, after: () => center(String(i), '') });
+    if (last === 0) moves.push({ type: 'pause', ms: 400, hl: 'walk' });
+    moves.push({ type: 'pause', ms: 300, after: () => center('', '') });
+    // Every number in the chain lands on that same corner.
+    for (let i = chain.length - 1; i >= 0; i--) moves.push({ type: 'drop', text: big(chain[i]), target: r, idx: chain.length - 1 - i, color: i === 0 ? '#fff' : PLACE[(chain.length - 1 - i) % PLACE.length], hl: `c${i}`, gap: 160 });
+    seqLoad(moves, () => hl('verdict ' + chain.map((_, i) => 'c' + i).join(' ')));
+    if (play) seqPlay();
+  }
+}
+];
+
+/* ───────── Scene switching ───────── */
+let cur = 0;
+$('#tabs').innerHTML = scenes.map((s, i) => `<button class="tab" data-i="${i}"><span class="n">${i + 1}</span><span class="t">${s.tab}</span></button>`).join('');
+$('#tabs').addEventListener('click', e => { const b = e.target.closest('.tab'); if (b) go(+b.dataset.i); });
+function go(i, play = true) {
+  cur = Math.max(0, Math.min(scenes.length - 1, i));
+  const s = scenes[cur];
+  document.querySelectorAll('.tab').forEach((t, j) => t.classList.toggle('on', j === cur));
+  $('#kicker').textContent = s.kicker; $('#mtitle').textContent = s.title;
+  $('#stepOf').textContent = `${cur + 1} / ${scenes.length}`;
+  $('#prevBtn').disabled = cur === 0;
+  $('#nextBtn').disabled = cur === scenes.length - 1;
+  $('#ribbon').hidden = true; $('#chips').hidden = true;
+  s.mount();
+  s.start(false);
+  if (play) setTimeout(() => { if (scenes[cur] === s && !seq.playing && seq.i === 0) seqPlay(); }, 450);
+  try { history.replaceState(null, '', '#' + s.id); } catch (_) {}
+}
+$('#prevBtn').addEventListener('click', () => go(cur - 1));
+$('#nextBtn').addEventListener('click', () => go(cur + 1));
+$('#playBtn').addEventListener('click', () => seq.playing ? seqPause() : seqPlay());
+$('#stepBtn').addEventListener('click', () => { seq.playing = false; seqAdvance(); });
+$('#resetBtn').addEventListener('click', () => scenes[cur].start(false));
+$('#speed').addEventListener('change', e => { state.speed = +e.target.value; });
+document.addEventListener('keydown', e => {
+  if (e.target.matches('input, select, textarea')) return;
+  if (e.key === 'ArrowRight') go(cur + 1);
+  else if (e.key === 'ArrowLeft') go(cur - 1);
+  else if (e.key === ' ') { e.preventDefault(); seq.playing ? seqPause() : seqPlay(); }
+});
+const fromHash = scenes.findIndex(s => '#' + s.id === location.hash);
+go(fromHash >= 0 ? fromHash : 0);
+})();
+</script>
+</body>
+</html>
